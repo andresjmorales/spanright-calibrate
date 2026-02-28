@@ -46,9 +46,6 @@ struct State {
     monitors: Vec<MonitorRect>,
     bind_horizontal: bool,
 
-    virt_x: i32,
-    virt_y: i32,
-
     segments: [i32; 4],
     gap: i32,
     mid_m1: i32,
@@ -130,8 +127,6 @@ fn run_overlay_window(config: OverlayConfig) -> Result<OverlayResult, String> {
             m2_idx: config.m2_idx,
             monitors: config.monitors,
             bind_horizontal: config.bind_horizontal,
-            virt_x: vx,
-            virt_y: vy,
             segments: initial_segments,
             gap: 0,
             mid_m1,
@@ -408,6 +403,7 @@ unsafe fn draw_gap(state: &State, hdc: HDC) {
 
         let bx = left_m.x + left_m.w;
         let arm = (left_m.w.min(right_m.w) * 2 / 5).max(150);
+        let inset = pen_w + 2; // pull lines back from edges to prevent bleed
 
         // All lines stay at exactly 45 degrees. The gap translates the
         // right-side lines vertically: a 45-degree line crossing G pixels of
@@ -415,16 +411,12 @@ unsafe fn draw_gap(state: &State, hdc: HDC) {
         // shifts by +gap / -gap respectively.
 
         // Left monitor lines are fixed at left_mid (anchored)
-        // Blue ↘
-        draw_line(hdc, bx - arm, left_mid - arm, bx, left_mid, blue, pen_w);
-        // Red ↗
-        draw_line(hdc, bx - arm, left_mid + arm, bx, left_mid, red, pen_w);
+        draw_line(hdc, bx - arm, left_mid - arm, bx - inset, left_mid - inset, blue, pen_w);
+        draw_line(hdc, bx - arm, left_mid + arm, bx - inset, left_mid + inset, red, pen_w);
 
         // Right monitor lines translated by gap
-        // Blue ↘ continues: shifted down by gap
-        draw_line(hdc, bx, right_mid + gap, bx + arm, right_mid + gap + arm, blue, pen_w);
-        // Red ↗ continues: shifted up by gap
-        draw_line(hdc, bx, right_mid - gap, bx + arm, right_mid - gap - arm, red, pen_w);
+        draw_line(hdc, bx + inset, right_mid + gap + inset, bx + arm, right_mid + gap + arm, blue, pen_w);
+        draw_line(hdc, bx + inset, right_mid - gap - inset, bx + arm, right_mid - gap - arm, red, pen_w);
     } else {
         let (top_mid, bottom_mid, top_m, bottom_m) = if m1.y < m2.y {
             (state.mid_m1, state.mid_m2, m1, m2)
@@ -434,14 +426,15 @@ unsafe fn draw_gap(state: &State, hdc: HDC) {
 
         let by = top_m.y + top_m.h;
         let arm = (top_m.h.min(bottom_m.h) * 2 / 5).max(150);
+        let inset = pen_w + 2;
 
         // Top monitor lines fixed at top_mid
-        draw_line(hdc, top_mid - arm, by - arm, top_mid, by, blue, pen_w);
-        draw_line(hdc, top_mid + arm, by - arm, top_mid, by, red, pen_w);
+        draw_line(hdc, top_mid - arm, by - arm, top_mid - inset, by - inset, blue, pen_w);
+        draw_line(hdc, top_mid + arm, by - arm, top_mid + inset, by - inset, red, pen_w);
 
         // Bottom monitor lines translated by gap
-        draw_line(hdc, bottom_mid + gap, by, bottom_mid + gap + arm, by + arm, blue, pen_w);
-        draw_line(hdc, bottom_mid - gap, by, bottom_mid - gap - arm, by + arm, red, pen_w);
+        draw_line(hdc, bottom_mid + gap + inset, by + inset, bottom_mid + gap + arm, by + arm, blue, pen_w);
+        draw_line(hdc, bottom_mid - gap - inset, by + inset, bottom_mid - gap - arm, by + arm, red, pen_w);
     }
 
     let text = format!(

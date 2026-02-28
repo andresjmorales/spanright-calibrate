@@ -9,7 +9,10 @@ import {
   discoverMonitors,
   startCalibration,
   exportCalibrationJson,
+  saveCalibrationFile,
+  openUrl,
 } from "./hooks/useTauriCommands";
+import { buildSpanrightUrl } from "./spanrightUrl";
 import type { CalibrationResult, CalibrationStatus, Monitor } from "./types";
 
 export default function App() {
@@ -59,15 +62,45 @@ export default function App() {
     }
   };
 
-  const handleExportJson = async () => {
+  const [copyFeedback, setCopyFeedback] = useState(false);
+
+  const handleCopyJson = async () => {
     try {
       const json = await exportCalibrationJson(calibrationResults);
       await navigator.clipboard.writeText(json);
       setError(null);
+      setCopyFeedback(true);
+      setTimeout(() => setCopyFeedback(false), 2000);
     } catch (e) {
       setError(
         `Export failed: ${e instanceof Error ? e.message : String(e)}`
       );
+    }
+  };
+
+  const handleSaveFile = async () => {
+    try {
+      const result = await saveCalibrationFile(calibrationResults);
+      if (result !== "cancelled") {
+        setError(null);
+      }
+    } catch (e) {
+      setError(
+        `Save failed: ${e instanceof Error ? e.message : String(e)}`
+      );
+    }
+  };
+
+  const handleOpenSpanright = async () => {
+    const url = buildSpanrightUrl(monitors, calibrationResults);
+    if (!url) {
+      setError("Could not build Spanright URL — ensure monitors have diagonal sizes set");
+      return;
+    }
+    try {
+      await openUrl(url);
+    } catch (e) {
+      setError(`Failed to open Spanright: ${e instanceof Error ? e.message : String(e)}`);
     }
   };
 
@@ -88,6 +121,12 @@ export default function App() {
           Refresh
         </button>
       </div>
+
+      <StatusBar
+        monitorCount={monitors.length}
+        loading={loading}
+        error={error}
+      />
 
       <MonitorLayoutMap monitors={monitors} />
 
@@ -110,17 +149,16 @@ export default function App() {
             monitors={monitors}
             results={calibrationResults}
           />
-          <ExportPanel onExportJson={handleExportJson} />
+          <ExportPanel
+            onCopyJson={handleCopyJson}
+            onSaveFile={handleSaveFile}
+            onOpenSpanright={handleOpenSpanright}
+            spanrightReady={monitors.some((m) => m.ppi != null)}
+            copied={copyFeedback}
+          />
         </>
       )}
 
-      <div style={{ marginTop: "auto" }}>
-        <StatusBar
-          monitorCount={monitors.length}
-          loading={loading}
-          error={error}
-        />
-      </div>
     </div>
   );
 }

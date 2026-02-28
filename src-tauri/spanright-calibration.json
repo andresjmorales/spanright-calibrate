@@ -1,0 +1,53 @@
+[
+  {
+    "id": "55a1a644-5c7a-4898-8001-d0623479f5f4",
+    "name": "Calibrated Layout",
+    "savedAt": 1772268133862,
+    "monitors": [
+      {
+        "preset": {
+          "name": "14\" WUXGA",
+          "diagonal": 13.97,
+          "aspectRatio": [
+            8,
+            5
+          ],
+          "resolutionX": 1920,
+          "resolutionY": 1200
+        },
+        "physicalX": 39.2162,
+        "physicalY": 47.0133
+      },
+      {
+        "preset": {
+          "name": "24\" FHD",
+          "diagonal": 23.8,
+          "aspectRatio": [
+            16,
+            9
+          ],
+          "resolutionX": 1920,
+          "resolutionY": 1080
+        },
+        "physicalX": 51.8422,
+        "physicalY": 42.2639,
+        "displayName": "HP E24d G4"
+      },
+      {
+        "preset": {
+          "name": "34\" UWFHD",
+          "diagonal": 34.06,
+          "aspectRatio": [
+            64,
+            27
+          ],
+          "resolutionX": 2560,
+          "resolutionY": 1080
+        },
+        "physicalX": 73.4038,
+        "physicalY": 41.3808,
+        "displayName": "LG ULTRAWIDE"
+      }
+    ]
+  }
+]

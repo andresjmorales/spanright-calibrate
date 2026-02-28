@@ -1,6 +1,6 @@
 pub mod models;
-mod discovery;
-mod edid;
+pub mod discovery;
+pub mod edid;
 
 pub use models::Monitor;
 

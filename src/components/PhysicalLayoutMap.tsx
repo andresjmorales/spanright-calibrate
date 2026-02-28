@@ -143,9 +143,9 @@ export default function PhysicalLayoutMap({ monitors, results }: Props) {
   const totalW = maxX - minX;
   const totalH = maxY - minY;
 
-  const padding = 20;
+  const padding = 28;
   const maxContainerW = 640;
-  const maxContainerH = 200;
+  const maxContainerH = 220;
   const pxPerInch = Math.min(
     (maxContainerW - padding * 2) / totalW,
     (maxContainerH - padding * 2) / totalH
@@ -238,40 +238,43 @@ export default function PhysicalLayoutMap({ monitors, results }: Props) {
               const rightRect = a.x < b.x ? b : a;
               const gapX1 = (leftRect.x + leftRect.w - minX) * pxPerInch + padding;
               const gapX2 = (rightRect.x - minX) * pxPerInch + padding;
-              const gapMidY =
-                Math.max(a.y, b.y) - minY + Math.min(a.h, b.h) * 0.5;
-              const midY = gapMidY * pxPerInch + padding;
+              // Place above the shorter of the two monitors
+              const topEdge = Math.min(
+                (a.y - minY) * pxPerInch + padding,
+                (b.y - minY) * pxPerInch + padding
+              );
+              const annotY = topEdge - 6;
 
               return (
-                <g key={`gap-${r.monitorId}`} opacity={0.5}>
+                <g key={`gap-${r.monitorId}`} opacity={0.6}>
                   <line
                     x1={gapX1}
-                    y1={midY - 8}
+                    y1={annotY - 4}
                     x2={gapX1}
-                    y2={midY + 8}
+                    y2={annotY + 4}
                     stroke="#9aa0a6"
                     strokeWidth={1}
                   />
                   <line
                     x1={gapX1}
-                    y1={midY}
+                    y1={annotY}
                     x2={gapX2}
-                    y2={midY}
+                    y2={annotY}
                     stroke="#9aa0a6"
                     strokeWidth={1}
                     strokeDasharray="3,2"
                   />
                   <line
                     x1={gapX2}
-                    y1={midY - 8}
+                    y1={annotY - 4}
                     x2={gapX2}
-                    y2={midY + 8}
+                    y2={annotY + 4}
                     stroke="#9aa0a6"
                     strokeWidth={1}
                   />
                   <text
                     x={(gapX1 + gapX2) / 2}
-                    y={midY - 10}
+                    y={annotY - 8}
                     textAnchor="middle"
                     fill="#9aa0a6"
                     fontSize={9}

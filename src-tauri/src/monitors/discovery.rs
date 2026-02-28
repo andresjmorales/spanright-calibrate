@@ -107,6 +107,110 @@ pub fn enumerate_monitors() -> Result<Vec<Monitor>, String> {
     Ok(monitors)
 }
 
+/// Get refresh rate and connection type for a given GDI device name.
+pub fn get_display_extras(device_name: &str) -> (Option<u32>, Option<String>) {
+    let mut refresh = None;
+
+    // Refresh rate from DEVMODEW
+    let dev_name_w: Vec<u16> = device_name.encode_utf16().chain(std::iter::once(0)).collect();
+    let mut devmode = DEVMODEW {
+        dmSize: mem::size_of::<DEVMODEW>() as u16,
+        ..Default::default()
+    };
+    let ok = unsafe {
+        EnumDisplaySettingsW(
+            PCWSTR(dev_name_w.as_ptr()),
+            ENUM_CURRENT_SETTINGS,
+            &mut devmode,
+        )
+    };
+    if ok.as_bool() && devmode.dmDisplayFrequency > 0 {
+        refresh = Some(devmode.dmDisplayFrequency);
+    }
+
+    // Connection type from DisplayConfig
+    let conn = get_connection_type(device_name);
+
+    (refresh, conn)
+}
+
+fn get_connection_type(device_name: &str) -> Option<String> {
+    let mut path_count = 0u32;
+    let mut mode_count = 0u32;
+
+    let err = unsafe {
+        GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &mut path_count, &mut mode_count)
+    };
+    if err.0 != 0 {
+        return None;
+    }
+
+    let mut paths = vec![DISPLAYCONFIG_PATH_INFO::default(); path_count as usize];
+    let mut modes = vec![DISPLAYCONFIG_MODE_INFO::default(); mode_count as usize];
+
+    let err = unsafe {
+        QueryDisplayConfig(
+            QDC_ONLY_ACTIVE_PATHS,
+            &mut path_count,
+            paths.as_mut_ptr(),
+            &mut mode_count,
+            modes.as_mut_ptr(),
+            None,
+        )
+    };
+    if err.0 != 0 {
+        return None;
+    }
+    paths.truncate(path_count as usize);
+
+    for path in &paths {
+        let mut source_name = DISPLAYCONFIG_SOURCE_DEVICE_NAME {
+            header: DISPLAYCONFIG_DEVICE_INFO_HEADER {
+                r#type: DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME,
+                size: mem::size_of::<DISPLAYCONFIG_SOURCE_DEVICE_NAME>() as u32,
+                adapterId: path.sourceInfo.adapterId,
+                id: path.sourceInfo.id,
+            },
+            ..Default::default()
+        };
+
+        let source_ok =
+            unsafe { DisplayConfigGetDeviceInfo(&mut source_name.header as *mut _) };
+        if source_ok != 0 {
+            continue;
+        }
+
+        let gdi = wchar_to_string(&source_name.viewGdiDeviceName);
+        if gdi != device_name {
+            continue;
+        }
+
+        let tech = path.targetInfo.outputTechnology;
+        let name = match tech.0 {
+            0 => "VGA",
+            1 => "S-Video",
+            2 => "Composite",
+            3 => "Component",
+            4 => "DVI",
+            5 => "HDMI",
+            6 => "LVDS",
+            8 => "D-JPeg",
+            9 => "SDI",
+            10 => "DisplayPort (External)",
+            11 => "DisplayPort (Embedded)",
+            12 => "UDI (External)",
+            13 => "UDI (Embedded)",
+            14 => "SDTV Dongle",
+            15 => "Miracast",
+            16 => "Indirect Wired",
+            -2147483648_i32 => "Internal",
+            _ => "Unknown",
+        };
+        return Some(name.to_string());
+    }
+    None
+}
+
 pub fn populate_friendly_names(monitors: &mut [Monitor]) -> Result<(), String> {
     let mut path_count = 0u32;
     let mut mode_count = 0u32;
