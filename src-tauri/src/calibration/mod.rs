@@ -43,6 +43,18 @@ pub fn run_calibration(monitors: &[Monitor]) -> Result<Vec<CalibrationResult>, S
         })
         .collect();
 
+    let monitor_labels: Vec<String> = monitors
+        .iter()
+        .map(|m| {
+            let name = if m.friendly_name.is_empty() {
+                &m.device_name
+            } else {
+                &m.friendly_name
+            };
+            format!("{}\n{}×{}", name, m.resolution_x, m.resolution_y)
+        })
+        .collect();
+
     for (unbound_idx, bound_idx) in &pairs {
         let bind_horizontal = flow::determine_bind_horizontal(
             &monitors[*unbound_idx],
@@ -55,6 +67,7 @@ pub fn run_calibration(monitors: &[Monitor]) -> Result<Vec<CalibrationResult>, S
             m1_idx: *unbound_idx,
             m2_idx: *bound_idx,
             monitors: monitor_rects.clone(),
+            monitor_labels: monitor_labels.clone(),
             bind_horizontal,
             temp_middles: None,
         })?;
@@ -125,6 +138,7 @@ pub fn run_calibration(monitors: &[Monitor]) -> Result<Vec<CalibrationResult>, S
             m1_idx: *unbound_idx,
             m2_idx: *bound_idx,
             monitors: monitor_rects.clone(),
+            monitor_labels: monitor_labels.clone(),
             bind_horizontal,
             temp_middles: Some([temp_mid_m1, temp_mid_m2]),
         })?;
