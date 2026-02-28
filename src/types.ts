@@ -4,6 +4,7 @@ export interface Monitor {
   friendlyName: string;
   monitorName: string;
   adapterName: string;
+  monitorDeviceId: string;
   isPrimary: boolean;
   resolutionX: number;
   resolutionY: number;

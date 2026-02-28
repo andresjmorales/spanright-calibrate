@@ -64,10 +64,13 @@ pub fn enumerate_monitors() -> Result<Vec<Monitor>, String> {
             EnumDisplayDevicesW(PCWSTR(adapter.DeviceName.as_ptr()), 0, &mut monitor_dev, 1)
         };
 
-        let monitor_name = if has_monitor.as_bool() {
-            wchar_to_string(&monitor_dev.DeviceString)
+        let (monitor_name, monitor_device_id) = if has_monitor.as_bool() {
+            (
+                wchar_to_string(&monitor_dev.DeviceString),
+                wchar_to_string(&monitor_dev.DeviceID),
+            )
         } else {
-            String::new()
+            (String::new(), String::new())
         };
 
         let (pos_x, pos_y) = unsafe {
@@ -83,6 +86,7 @@ pub fn enumerate_monitors() -> Result<Vec<Monitor>, String> {
             friendly_name: String::new(),
             monitor_name,
             adapter_name: adapter_string,
+            monitor_device_id,
             is_primary,
             resolution_x: devmode.dmPelsWidth,
             resolution_y: devmode.dmPelsHeight,

@@ -9,6 +9,13 @@ export async function startCalibration(): Promise<CalibrationResult[]> {
   return invoke<CalibrationResult[]>("start_calibration");
 }
 
+export async function setMonitorDiagonal(
+  id: number,
+  diagonal: number
+): Promise<void> {
+  return invoke<void>("set_monitor_diagonal", { id, diagonal });
+}
+
 export async function exportCalibrationJson(
   results: CalibrationResult[]
 ): Promise<string> {

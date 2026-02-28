@@ -61,29 +61,18 @@ pub fn read_all_edid() -> Result<HashMap<String, EdidPhysicalSize>, String> {
     Ok(result)
 }
 
-/// Apply EDID data to monitors by matching hardware ID fragments.
+/// Apply EDID data to monitors by matching hardware ID fragments
+/// against the monitor_device_id (e.g. "MONITOR\HPN3645\{guid}\0001").
 pub fn apply_edid_to_monitors(
     monitors: &mut [super::models::Monitor],
     edid_map: &HashMap<String, EdidPhysicalSize>,
 ) {
     for monitor in monitors.iter_mut() {
-        // Try to find a matching EDID entry
         for (key, size) in edid_map {
-            if monitor.monitor_name.contains(key) || monitor.device_name.contains(key) {
+            if monitor.monitor_device_id.contains(key) {
                 monitor.physical_width_mm = Some(size.width_mm);
                 monitor.physical_height_mm = Some(size.height_mm);
                 break;
-            }
-        }
-    }
-
-    // If exact matching didn't work, try matching by order (same index)
-    // when there's only one monitor and one EDID entry, etc.
-    if monitors.len() == 1 && edid_map.len() == 1 {
-        if monitors[0].physical_width_mm.is_none() {
-            if let Some(size) = edid_map.values().next() {
-                monitors[0].physical_width_mm = Some(size.width_mm);
-                monitors[0].physical_height_mm = Some(size.height_mm);
             }
         }
     }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import MonitorLayoutMap from "./components/MonitorLayoutMap";
 import MonitorList from "./components/MonitorList";
 import CalibrationPanel from "./components/CalibrationPanel";
 import ExportPanel from "./components/ExportPanel";
@@ -87,9 +88,11 @@ export default function App() {
         </button>
       </div>
 
+      <MonitorLayoutMap monitors={monitors} />
+
       <div>
         <div className="section-title">Detected Monitors</div>
-        <MonitorList monitors={monitors} />
+        <MonitorList monitors={monitors} onRefresh={refresh} />
       </div>
 
       <CalibrationPanel

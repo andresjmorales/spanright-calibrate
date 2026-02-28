@@ -8,6 +8,8 @@ pub struct Monitor {
     pub friendly_name: String,
     pub monitor_name: String,
     pub adapter_name: String,
+    /// Hardware path from EnumDisplayDevices, e.g. "MONITOR\HPN3645\{guid}\0001"
+    pub monitor_device_id: String,
     pub is_primary: bool,
 
     pub resolution_x: u32,

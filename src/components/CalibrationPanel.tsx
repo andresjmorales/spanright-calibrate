@@ -66,6 +66,30 @@ export default function CalibrationPanel({
         <div>
           <div className="section-title">Calibration Results</div>
           <div className="monitor-list">
+            {(() => {
+              const calibratedIds = new Set(results.map((r) => r.monitorId));
+              const referenceMonitors = monitors.filter(
+                (m) => !calibratedIds.has(m.id)
+              );
+              return referenceMonitors.map((m) => (
+                <div className="monitor-card" key={`ref-${m.id}`}>
+                  <div className="monitor-icon">📍</div>
+                  <div className="monitor-info">
+                    <div className="monitor-name">
+                      {getMonitorName(m.id)}
+                      <span className="badge badge-primary">Reference</span>
+                    </div>
+                    <div className="monitor-details">
+                      <span>scale 1.000</span>
+                      <span>
+                        {m.resolutionX}x{m.resolutionY}
+                        {m.isPrimary ? " (primary)" : ""}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ));
+            })()}
             {results.map((r) => (
               <div className="monitor-card" key={r.monitorId}>
                 <div className="monitor-icon">📐</div>
