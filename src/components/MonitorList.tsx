@@ -87,7 +87,6 @@ function DiagonalField({
       {monitor.diagonalIn != null
         ? `${monitor.diagonalIn.toFixed(1)}"`
         : "? size"}
-      <span className="edit-hint">✎</span>
     </span>
   );
 }
@@ -342,13 +341,13 @@ export default function MonitorList({ monitors, onRefresh }: Props) {
                   </button>
                 </div>
                 <div className="monitor-details">
+                  <DiagonalField monitor={m} onRefresh={onRefresh} />
                   <span>
                     {m.resolutionX}×{m.resolutionY}
                   </span>
-                  <DiagonalField monitor={m} onRefresh={onRefresh} />
                   {ppi && <span>{ppi}</span>}
                   <span>
-                    at ({m.positionX}, {m.positionY})
+                    ({m.positionX}, {m.positionY})
                   </span>
                 </div>
               </div>

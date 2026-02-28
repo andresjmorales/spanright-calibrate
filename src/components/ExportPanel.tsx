@@ -28,7 +28,7 @@ export default function ExportPanel({
           {copied ? "Copied!" : "Copy JSON"}
         </button>
         <button className="btn btn-secondary" onClick={onSaveFile}>
-          Save to File
+          Export JSON
         </button>
       </div>
     </div>

@@ -22,6 +22,24 @@
   box-sizing: border-box;
 }
 
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
 html, body, #root {
   height: 100%;
   background: var(--bg-primary);
@@ -58,6 +76,34 @@ html, body, #root {
 .app-header .subtitle {
   font-size: 12px;
   color: var(--text-muted);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.github-link {
+  color: var(--text-muted);
+  transition: color 0.15s ease;
+  display: flex;
+  align-items: center;
+}
+
+.github-link:hover {
+  color: var(--text-primary);
+}
+
+.subtle-link {
+  color: var(--accent);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.subtle-link:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
 }
 
 .section-title {
@@ -145,11 +191,10 @@ html, body, #root {
   color: var(--text-secondary);
   font-size: 12px;
   margin-top: 2px;
-}
-
-.monitor-details span + span::before {
-  content: " · ";
-  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .monitor-adapter {
@@ -222,6 +267,14 @@ html, body, #root {
   color: var(--text-secondary);
 }
 
+.status-text {
+  flex: 1;
+}
+
+.status-refresh {
+  margin-left: auto;
+}
+
 .status-dot {
   width: 8px;
   height: 8px;
@@ -265,32 +318,25 @@ html, body, #root {
   cursor: pointer;
   border-bottom: 1px dashed var(--text-muted);
   transition: color 0.15s ease;
+  line-height: 18px;
+  height: 18px;
 }
 
 .diagonal-display:hover {
   color: var(--accent);
 }
 
-.diagonal-display .edit-hint {
-  font-size: 10px;
-  margin-left: 3px;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-
-.diagonal-display:hover .edit-hint {
-  opacity: 0.7;
-}
-
 .diagonal-edit {
   display: inline-flex;
   align-items: center;
   gap: 1px;
+  height: 18px;
 }
 
 .diagonal-input {
   width: 52px;
-  padding: 1px 4px;
+  padding: 0 4px;
+  height: 18px;
   background: var(--bg-primary);
   border: 1px solid var(--accent);
   border-radius: 3px;
@@ -302,6 +348,13 @@ html, body, #root {
 
 .diagonal-input:focus {
   box-shadow: 0 0 0 1px var(--accent);
+}
+
+.diagonal-input::-webkit-inner-spin-button,
+.diagonal-input::-webkit-outer-spin-button {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .layout-map-container {
@@ -325,7 +378,7 @@ html, body, #root {
 /* Info button */
 .info-btn {
   background: none;
-  border: 1px solid var(--border);
+  border: 1.5px solid var(--text-muted);
   border-radius: 50%;
   width: 20px;
   height: 20px;
@@ -451,4 +504,62 @@ html, body, #root {
 
 .info-error {
   color: var(--error);
+}
+
+/* About dialog */
+.about-popup {
+  width: 360px;
+}
+
+.about-body {
+  padding: 20px 24px 24px;
+  text-align: center;
+}
+
+.about-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.about-version {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+
+.about-description {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 18px;
+}
+
+.about-links {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.about-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 13px;
+  transition: color 0.15s ease;
+}
+
+.about-link:hover {
+  color: var(--accent-hover);
+}
+
+.about-footer {
+  font-size: 11px;
+  color: var(--text-muted);
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
 }
