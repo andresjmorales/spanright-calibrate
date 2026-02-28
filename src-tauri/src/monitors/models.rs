@@ -25,6 +25,9 @@ pub struct Monitor {
     pub physical_height_in: Option<f64>,
     pub diagonal_in: Option<f64>,
     pub ppi: Option<f64>,
+
+    /// How physical size was determined: "edid", "guessed", "manual", or "none"
+    pub size_source: String,
 }
 
 impl Monitor {

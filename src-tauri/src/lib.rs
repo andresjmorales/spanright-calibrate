@@ -15,6 +15,7 @@ fn get_monitors(overrides: &DiagonalOverrides) -> Result<Vec<monitors::Monitor>,
     for m in &mut mons {
         if let Some(&diag) = map.get(&m.id) {
             monitors::set_physical_from_diagonal(m, diag);
+            m.size_source = "manual".into();
             m.compute_derived();
         }
     }

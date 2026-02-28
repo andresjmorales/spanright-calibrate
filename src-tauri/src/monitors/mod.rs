@@ -24,6 +24,7 @@ pub fn discover_all() -> Result<Vec<Monitor>, String> {
         if m.physical_width_mm.is_none() {
             if let Some(diag) = guess_diagonal_from_names(m) {
                 set_physical_from_diagonal(m, diag);
+                m.size_source = "guessed".into();
             }
         }
         m.compute_derived();

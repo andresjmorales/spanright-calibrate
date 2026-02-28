@@ -72,6 +72,7 @@ pub fn apply_edid_to_monitors(
             if monitor.monitor_device_id.contains(key) {
                 monitor.physical_width_mm = Some(size.width_mm);
                 monitor.physical_height_mm = Some(size.height_mm);
+                monitor.size_source = "edid".into();
                 break;
             }
         }

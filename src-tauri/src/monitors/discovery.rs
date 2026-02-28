@@ -99,6 +99,7 @@ pub fn enumerate_monitors() -> Result<Vec<Monitor>, String> {
             physical_height_in: None,
             diagonal_in: None,
             ppi: None,
+            size_source: "none".into(),
         });
         id += 1;
     }

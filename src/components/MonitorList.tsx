@@ -98,9 +98,7 @@ export default function MonitorList({ monitors, onRefresh }: Props) {
       {monitors.map((m) => {
         const displayName =
           m.friendlyName || m.monitorName || `Display ${m.id + 1}`;
-        const hasEdid = m.physicalWidthMm != null;
         const ppi = formatPpi(m);
-        const guessed = !hasEdid && m.diagonalIn != null;
 
         return (
           <div className="monitor-card" key={m.id}>
@@ -111,10 +109,12 @@ export default function MonitorList({ monitors, onRefresh }: Props) {
                 {m.isPrimary && (
                   <span className="badge badge-primary">Primary</span>
                 )}
-                {hasEdid ? (
+                {m.sizeSource === "edid" ? (
                   <span className="badge badge-edid">EDID</span>
-                ) : guessed ? (
-                  <span className="badge badge-no-edid">Guessed</span>
+                ) : m.sizeSource === "manual" ? (
+                  <span className="badge badge-edid">Manual</span>
+                ) : m.sizeSource === "guessed" ? (
+                  <span className="badge badge-no-edid">Estimated</span>
                 ) : (
                   <span className="badge badge-no-edid">No size</span>
                 )}

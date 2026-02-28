@@ -15,6 +15,10 @@ pub struct CalibrationResult {
     pub gap: i32,
     pub bound_to: usize,
     pub bind_horizontal: bool,
+    /// Pixel offset from unbound monitor's top (or left) edge to alignment midpoint
+    pub align_offset_unbound: f64,
+    /// Pixel offset from bound monitor's top (or left) edge to alignment midpoint
+    pub align_offset_bound: f64,
 }
 
 pub fn run_calibration(monitors: &[Monitor]) -> Result<Vec<CalibrationResult>, String> {
@@ -67,7 +71,9 @@ pub fn run_calibration(monitors: &[Monitor]) -> Result<Vec<CalibrationResult>, S
         let temp_mid_m1 = (scale_result.segments[0] + scale_result.segments[2]) / 2;
         let temp_mid_m2 = (scale_result.segments[1] + scale_result.segments[3]) / 2;
 
-        let (scale, relative_offset) = if bind_horizontal {
+        // off[0..3] are pixel offsets from each monitor's top (or left) edge
+        // to each line position: [blue_m1, blue_m2, red_m1, red_m2]
+        let (scale, relative_offset, align_off_m1, align_off_m2) = if bind_horizontal {
             let off = [
                 scale_result.segments[0] - m1r.y,
                 scale_result.segments[1] - m2r.y,
@@ -84,8 +90,10 @@ pub fn run_calibration(monitors: &[Monitor]) -> Result<Vec<CalibrationResult>, S
                 scales[*bound_idx]
             };
 
+            let mid_m1 = (off[0] + off[2]) as f64 / 2.0;
+            let mid_m2 = (off[1] + off[3]) as f64 / 2.0;
             let rel_y = off[1] as f64 - off[0] as f64 * scale;
-            (scale, rel_y)
+            (scale, rel_y, mid_m1, mid_m2)
         } else {
             let off = [
                 scale_result.segments[0] - m1r.x,
@@ -103,8 +111,10 @@ pub fn run_calibration(monitors: &[Monitor]) -> Result<Vec<CalibrationResult>, S
                 scales[*bound_idx]
             };
 
+            let mid_m1 = (off[0] + off[2]) as f64 / 2.0;
+            let mid_m2 = (off[1] + off[3]) as f64 / 2.0;
             let rel_x = off[1] as f64 - off[0] as f64 * scale;
-            (scale, rel_x)
+            (scale, rel_x, mid_m1, mid_m2)
         };
 
         scales[*unbound_idx] = scale;
@@ -161,6 +171,8 @@ pub fn run_calibration(monitors: &[Monitor]) -> Result<Vec<CalibrationResult>, S
             gap,
             bound_to: *bound_idx,
             bind_horizontal,
+            align_offset_unbound: align_off_m1,
+            align_offset_bound: align_off_m2,
         });
     }
 

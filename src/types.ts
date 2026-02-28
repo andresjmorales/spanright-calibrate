@@ -17,6 +17,7 @@ export interface Monitor {
   physicalHeightIn: number | null;
   diagonalIn: number | null;
   ppi: number | null;
+  sizeSource: "edid" | "guessed" | "manual" | "none";
 }
 
 export interface CalibrationResult {
@@ -27,6 +28,8 @@ export interface CalibrationResult {
   gap: number;
   boundTo: number;
   bindHorizontal: boolean;
+  alignOffsetUnbound: number;
+  alignOffsetBound: number;
 }
 
 export type CalibrationStatus = "idle" | "in_progress" | "complete" | "error";
