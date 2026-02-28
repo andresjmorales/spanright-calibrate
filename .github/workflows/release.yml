@@ -43,3 +43,4 @@ jobs:
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: false
+          args: --bundles msi,nsis

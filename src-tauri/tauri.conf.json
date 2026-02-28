@@ -19,8 +19,7 @@
     ]
   },
   "bundle": {
-    "targets": ["msi", "nsis"],
-    "createUpdaterArtifacts": false
+    "targets": ["msi", "nsis"]
   },
   "plugins": {}
 }
