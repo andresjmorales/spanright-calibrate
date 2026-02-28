@@ -42,3 +42,4 @@ jobs:
           releaseBody: "See the [README](https://github.com/andresjmorales/spanright-calibrate#readme) for details."
           releaseDraft: false
           prerelease: false
+          includeUpdaterJson: false

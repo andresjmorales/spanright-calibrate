@@ -18,6 +18,9 @@
       }
     ]
   },
-  "bundle": {},
+  "bundle": {
+    "targets": ["msi", "nsis"],
+    "createUpdaterArtifacts": false
+  },
   "plugins": {}
 }
