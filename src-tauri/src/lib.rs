@@ -1,9 +1,15 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
+mod monitors;
+
+#[tauri::command]
+fn discover_monitors() -> Result<Vec<monitors::Monitor>, String> {
+    monitors::discover_all()
+}
+
 pub fn run() {
     tauri::Builder::default()
-        .build(tauri::tauri_build_context!())
-        .expect("error while building tauri application")
-        .run(|_app_handle, _event| {});
+        .invoke_handler(tauri::generate_handler![discover_monitors])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
 }
