@@ -18,6 +18,16 @@ Most multi-monitor setups have monitors of different sizes, pixel densities, and
 
 5. **Detailed monitor info** — each detected monitor has an info panel showing everything the OS and EDID data can provide: manufacturer, model, serial number, manufacture date, native resolution, color format, bit depth, gamma, refresh rate range, connection type, and more.
 
+## How Calibration Works
+
+Calibration runs pairwise between adjacent monitors:
+
+1. **Scale calibration** — two colored horizontal lines appear spanning both monitors. You drag each line so they visually align across the physical boundary. The vertical distance between the lines, combined with each monitor's known PPI, determines the relative scale and vertical offset.
+
+2. **Gap calibration** — two diagonal lines (always at 45°) appear on the boundary monitors. You drag them until they form a continuous line across the physical gap. Since the angle is fixed at 45°, the pixel offset directly translates to the physical gap distance in inches.
+
+The math relies on each monitor having a known diagonal size (from EDID, a name-based estimate, or manual entry) to compute pixels-per-inch. All measurements are derived from these PPI values and the pixel offsets you set during calibration.
+
 ## Tech Stack
 
 - **[Tauri 2](https://v2.tauri.app/)** — desktop app framework (Rust backend + web frontend in a native OS webview)
@@ -45,16 +55,6 @@ npm run tauri build
 ```
 
 The installer will be in `src-tauri/target/release/bundle/`.
-
-## How Calibration Works
-
-Calibration runs pairwise between adjacent monitors:
-
-1. **Scale calibration** — two colored horizontal lines appear spanning both monitors. You drag each line so they visually align across the physical boundary. The vertical distance between the lines, combined with each monitor's known PPI, determines the relative scale and vertical offset.
-
-2. **Gap calibration** — two diagonal lines (always at 45°) appear on the boundary monitors. You drag them until they form a continuous line across the physical gap. Since the angle is fixed at 45°, the pixel offset directly translates to the physical gap distance in inches.
-
-The math relies on each monitor having a known diagonal size (from EDID, a name-based estimate, or manual entry) to compute pixels-per-inch. All measurements are derived from these PPI values and the pixel offsets you set during calibration.
 
 ## Project Structure
 

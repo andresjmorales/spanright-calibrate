@@ -164,12 +164,12 @@ export default function PhysicalLayoutMap({ monitors, results }: Props) {
           viewBox={`0 0 ${svgW} ${svgH}`}
           className="layout-map-svg"
         >
-          {layout.map((r, i) => {
+          {layout.map((r) => {
             const x = (r.x - minX) * pxPerInch + padding;
             const y = (r.y - minY) * pxPerInch + padding;
             const w = r.w * pxPerInch;
             const h = r.h * pxPerInch;
-            const color = COLORS[r.id % COLORS.length];
+            const color = COLORS[r.id % COLORS.length]!;
             const fontSize = Math.min(w * 0.12, h * 0.22, 14);
             const numSize = Math.min(w * 0.25, h * 0.4, 30);
 

@@ -46,7 +46,7 @@ export default function MonitorLayoutMap({ monitors }: Props) {
           const y = (m.positionY - minY) * scale + padding;
           const w = m.resolutionX * scale;
           const h = m.resolutionY * scale;
-          const color = COLORS[i % COLORS.length];
+          const color = COLORS[i % COLORS.length]!;
 
           const label = m.friendlyName || `Display ${m.id + 1}`;
           const fontSize = Math.min(w * 0.14, h * 0.28, 16);
