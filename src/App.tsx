@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import MonitorList from "./components/MonitorList";
 import CalibrationPanel from "./components/CalibrationPanel";
+import ExportPanel from "./components/ExportPanel";
 import StatusBar from "./components/StatusBar";
-import { useTauriCommands } from "./hooks/useTauriCommands";
-import type { CalibrationStatus, Monitor } from "./types";
+import {
+  discoverMonitors,
+  startCalibration,
+  exportCalibrationJson,
+} from "./hooks/useTauriCommands";
+import type { CalibrationResult, CalibrationStatus, Monitor } from "./types";
 
 export default function App() {
   const [monitors, setMonitors] = useState<Monitor[]>([]);
@@ -11,8 +16,9 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [calibrationStatus, setCalibrationStatus] =
     useState<CalibrationStatus>("idle");
-
-  const { discoverMonitors } = useTauriCommands();
+  const [calibrationResults, setCalibrationResults] = useState<
+    CalibrationResult[]
+  >([]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -25,16 +31,42 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, [discoverMonitors]);
+  }, []);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
 
-  const handleCalibrate = () => {
+  const handleCalibrate = async () => {
     setCalibrationStatus("in_progress");
-    // TODO: invoke calibration flow
-    setTimeout(() => setCalibrationStatus("idle"), 500);
+    setError(null);
+    try {
+      const results = await startCalibration();
+      setCalibrationResults(results);
+      setCalibrationStatus("complete");
+      const freshMonitors = await discoverMonitors();
+      setMonitors(freshMonitors);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("cancelled")) {
+        setCalibrationStatus("idle");
+      } else {
+        setError(msg);
+        setCalibrationStatus("error");
+      }
+    }
+  };
+
+  const handleExportJson = async () => {
+    try {
+      const json = await exportCalibrationJson(calibrationResults);
+      await navigator.clipboard.writeText(json);
+      setError(null);
+    } catch (e) {
+      setError(
+        `Export failed: ${e instanceof Error ? e.message : String(e)}`
+      );
+    }
   };
 
   return (
@@ -63,8 +95,14 @@ export default function App() {
       <CalibrationPanel
         monitorCount={monitors.length}
         status={calibrationStatus}
+        results={calibrationResults}
+        monitors={monitors}
         onCalibrate={handleCalibrate}
       />
+
+      {calibrationStatus === "complete" && calibrationResults.length > 0 && (
+        <ExportPanel onExportJson={handleExportJson} />
+      )}
 
       <div style={{ marginTop: "auto" }}>
         <StatusBar

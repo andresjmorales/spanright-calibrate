@@ -23,6 +23,7 @@ features = [
     "Win32_Graphics_Gdi",
     "Win32_Devices_Display",
     "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Input_KeyboardAndMouse",
     "Win32_Devices_DeviceAndDriverInstallation",
     "Win32_System_Registry",
 ]

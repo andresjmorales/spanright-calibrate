@@ -18,10 +18,21 @@ export interface Monitor {
   ppi: number | null;
 }
 
+export interface CalibrationResult {
+  monitorId: number;
+  scale: number;
+  relativeX: number;
+  relativeY: number;
+  gap: number;
+  boundTo: number;
+  bindHorizontal: boolean;
+}
+
 export type CalibrationStatus = "idle" | "in_progress" | "complete" | "error";
 
 export interface AppState {
   monitors: Monitor[];
+  calibrationResults: CalibrationResult[];
   calibrationStatus: CalibrationStatus;
   error: string | null;
   loading: boolean;

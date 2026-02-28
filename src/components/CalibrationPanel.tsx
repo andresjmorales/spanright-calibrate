@@ -1,14 +1,18 @@
-import type { CalibrationStatus } from "../types";
+import type { CalibrationResult, CalibrationStatus, Monitor } from "../types";
 
 interface Props {
   monitorCount: number;
   status: CalibrationStatus;
+  results: CalibrationResult[];
+  monitors: Monitor[];
   onCalibrate: () => void;
 }
 
 export default function CalibrationPanel({
   monitorCount,
   status,
+  results,
+  monitors,
   onCalibrate,
 }: Props) {
   const canCalibrate = monitorCount >= 2 && status !== "in_progress";
@@ -20,6 +24,12 @@ export default function CalibrationPanel({
     error: "Calibration failed",
   };
 
+  const getMonitorName = (id: number) => {
+    const m = monitors.find((mon) => mon.id === id);
+    if (!m) return `Display ${id + 1}`;
+    return m.friendlyName || m.monitorName || `Display ${id + 1}`;
+  };
+
   return (
     <div className="calibration-panel">
       <div className="actions">
@@ -28,7 +38,7 @@ export default function CalibrationPanel({
           disabled={!canCalibrate}
           onClick={onCalibrate}
         >
-          Calibrate
+          {status === "complete" ? "Recalibrate" : "Calibrate"}
         </button>
         <span className="status-bar" style={{ flex: 1 }}>
           <span
@@ -45,9 +55,36 @@ export default function CalibrationPanel({
           {statusText[status]}
         </span>
       </div>
+
       {monitorCount < 2 && (
         <div className="error-message">
           At least 2 monitors are required for calibration.
+        </div>
+      )}
+
+      {results.length > 0 && (
+        <div>
+          <div className="section-title">Calibration Results</div>
+          <div className="monitor-list">
+            {results.map((r) => (
+              <div className="monitor-card" key={r.monitorId}>
+                <div className="monitor-icon">📐</div>
+                <div className="monitor-info">
+                  <div className="monitor-name">
+                    {getMonitorName(r.monitorId)}
+                  </div>
+                  <div className="monitor-details">
+                    <span>scale {r.scale.toFixed(3)}</span>
+                    <span>gap {r.gap}px</span>
+                    <span>
+                      bound to {getMonitorName(r.boundTo)}
+                      {r.bindHorizontal ? " (horizontal)" : " (vertical)"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
