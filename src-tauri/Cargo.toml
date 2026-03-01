@@ -1,6 +1,6 @@
 [package]
 name = "spanright-calibrate"
-version = "0.1.0"
+version = "0.1.1"
 description = "Monitor calibration companion for Spanright"
 edition = "2021"
 

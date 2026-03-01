@@ -27,6 +27,7 @@ pub struct OverlayConfig {
     pub m1_idx: usize,
     pub m2_idx: usize,
     pub monitors: Vec<MonitorRect>,
+    pub monitor_labels: Vec<String>,
     pub bind_horizontal: bool,
     /// Per-monitor midpoints from the scale step (y-coords for horizontal, x for vertical).
     /// [0] = midpoint on m1, [1] = midpoint on m2.
@@ -44,6 +45,7 @@ struct State {
     m1_idx: usize,
     m2_idx: usize,
     monitors: Vec<MonitorRect>,
+    monitor_labels: Vec<String>,
     bind_horizontal: bool,
 
     segments: [i32; 4],
@@ -56,6 +58,7 @@ struct State {
     drag_start: i32,
     drag_start_val: i32,
     last_interacted: Option<usize>,
+    hovering_line: bool,
 
     confirmed: bool,
     cancelled: bool,
@@ -126,6 +129,7 @@ fn run_overlay_window(config: OverlayConfig) -> Result<OverlayResult, String> {
             m1_idx: config.m1_idx,
             m2_idx: config.m2_idx,
             monitors: config.monitors,
+            monitor_labels: config.monitor_labels,
             bind_horizontal: config.bind_horizontal,
             segments: initial_segments,
             gap: 0,
@@ -136,6 +140,7 @@ fn run_overlay_window(config: OverlayConfig) -> Result<OverlayResult, String> {
             drag_start: 0,
             drag_start_val: 0,
             last_interacted: None,
+            hovering_line: false,
             confirmed: false,
             cancelled: false,
         });
@@ -213,12 +218,41 @@ unsafe extern "system" fn wnd_proc(
         WM_PAINT => {
             let mut ps = PAINTSTRUCT::default();
             let hdc = BeginPaint(hwnd, &mut ps);
+
+            let vw = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+            let vh = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+
+            let mem_dc = CreateCompatibleDC(hdc);
+            let draw_hdc = HDC(mem_dc.0);
+            let mem_bmp = CreateCompatibleBitmap(hdc, vw, vh);
+            let old_bmp = SelectObject(draw_hdc, HGDIOBJ(mem_bmp.0));
+
             match state.step {
-                OverlayStep::Scale => draw_scale(state, hdc),
-                OverlayStep::Gap => draw_gap(state, hdc),
+                OverlayStep::Scale => draw_scale(state, draw_hdc),
+                OverlayStep::Gap => draw_gap(state, draw_hdc),
             }
+
+            BitBlt(hdc, 0, 0, vw, vh, draw_hdc, 0, 0, SRCCOPY);
+
+            SelectObject(draw_hdc, old_bmp);
+            DeleteObject(HGDIOBJ(mem_bmp.0));
+            DeleteDC(mem_dc);
+
             EndPaint(hwnd, &ps);
             LRESULT(0)
+        }
+        WM_ERASEBKGND => LRESULT(1),
+        WM_SETCURSOR => {
+            if (lparam.0 & 0xFFFF) as u16 == 1 {
+                let cursor = if state.dragging || state.hovering_line {
+                    LoadCursorW(HINSTANCE::default(), IDC_HAND)
+                } else {
+                    LoadCursorW(HINSTANCE::default(), IDC_ARROW)
+                };
+                SetCursor(cursor.unwrap_or_default());
+                return LRESULT(1);
+            }
+            return DefWindowProcW(hwnd, msg, wparam, lparam);
         }
         WM_KEYDOWN => {
             let vk = VIRTUAL_KEY(wparam.0 as u16);
@@ -271,8 +305,15 @@ unsafe extern "system" fn wnd_proc(
             LRESULT(0)
         }
         WM_MOUSEMOVE => {
+            let (mx, my) = mouse_pos(lparam);
+
+            state.hovering_line = if state.step == OverlayStep::Scale {
+                hit_test_scale(state, mx, my).is_some()
+            } else {
+                hit_test_gap(state, mx, my)
+            };
+
             if state.dragging {
-                let (mx, my) = mouse_pos(lparam);
                 if state.step == OverlayStep::Scale {
                     if let Some(idx) = state.selected {
                         let pos = if state.bind_horizontal { my } else { mx };
@@ -344,15 +385,42 @@ fn hit_test_scale(state: &State, mx: i32, my: i32) -> Option<usize> {
     None
 }
 
+fn hit_test_gap(state: &State, mx: i32, my: i32) -> bool {
+    let m1 = &state.monitors[state.m1_idx];
+    let m2 = &state.monitors[state.m2_idx];
+    let threshold = 150;
+
+    if state.bind_horizontal {
+        let boundary_x = if m1.x < m2.x {
+            m1.x + m1.w
+        } else {
+            m2.x + m2.w
+        };
+        (mx - boundary_x).abs() <= threshold
+    } else {
+        let boundary_y = if m1.y < m2.y {
+            m1.y + m1.h
+        } else {
+            m2.y + m2.h
+        };
+        (my - boundary_y).abs() <= threshold
+    }
+}
+
 unsafe fn draw_scale(state: &State, hdc: HDC) {
     let m1 = &state.monitors[state.m1_idx];
     let m2 = &state.monitors[state.m2_idx];
 
     fill_background(hdc, state);
 
-    // Highlight paired monitors
     draw_monitor_frame(hdc, m1);
     draw_monitor_frame(hdc, m2);
+
+    for (i, m) in state.monitors.iter().enumerate() {
+        if let Some(label) = state.monitor_labels.get(i) {
+            draw_monitor_label(hdc, m, label);
+        }
+    }
 
     let blue = rgb(100, 141, 250);
     let red = rgb(250, 90, 110);
@@ -374,8 +442,8 @@ unsafe fn draw_scale(state: &State, hdc: HDC) {
     }
 
     // Instructions
-    let text = "Drag each colored line so it sits at the same physical height on both displays.\n\
-                Keep blue and red as far apart as possible for best accuracy.\n\
+    let text = "Drag each colored line so it sits at the same physical height on both displays. \n\
+                Keep blue and red as far apart as possible for best accuracy. \n\
                 Arrow keys: \u{00B1}1px  |  Enter: confirm  |  Esc: cancel";
     draw_text_at(hdc, m1.x + 20, m1.y + m1.h - 60, text);
     draw_text_at(hdc, m2.x + 20, m2.y + m2.h - 60, text);
@@ -388,6 +456,12 @@ unsafe fn draw_gap(state: &State, hdc: HDC) {
     fill_background(hdc, state);
     draw_monitor_frame(hdc, m1);
     draw_monitor_frame(hdc, m2);
+
+    for (i, m) in state.monitors.iter().enumerate() {
+        if let Some(label) = state.monitor_labels.get(i) {
+            draw_monitor_label(hdc, m, label);
+        }
+    }
 
     let blue = rgb(100, 141, 250);
     let red = rgb(250, 90, 110);
@@ -513,4 +587,49 @@ unsafe fn draw_text_at(hdc: HDC, x: i32, y: i32, text: &str) {
     SetTextColor(hdc, rgb(160, 165, 175));
     let wide: Vec<u16> = text.encode_utf16().collect();
     TextOutW(hdc, x, y, &wide);
+}
+
+unsafe fn draw_monitor_label(hdc: HDC, m: &MonitorRect, label: &str) {
+    if label.is_empty() {
+        return;
+    }
+
+    let font_height = (m.h / 35).clamp(20, 70);
+    let face = encode_wide("Segoe UI");
+    let font = CreateFontW(
+        font_height,
+        0,
+        0,
+        0,
+        FW_NORMAL.0 as i32,
+        0,
+        0,
+        0,
+        DEFAULT_CHARSET.0 as u32,
+        OUT_DEFAULT_PRECIS.0 as u32,
+        CLIP_DEFAULT_PRECIS.0 as u32,
+        CLEARTYPE_QUALITY.0 as u32,
+        0,
+        PCWSTR(face.as_ptr()),
+    );
+    let old_font = SelectObject(hdc, HGDIOBJ(font.0));
+    SetBkMode(hdc, TRANSPARENT);
+    SetTextColor(hdc, rgb(80, 85, 105));
+
+    let lines: Vec<&str> = label.lines().collect();
+    let line_spacing = font_height + 6;
+    let total_height = lines.len() as i32 * line_spacing;
+    let start_y = m.y + (m.h - total_height) / 2;
+
+    for (i, line) in lines.iter().enumerate() {
+        let wide: Vec<u16> = line.encode_utf16().collect();
+        let mut size = SIZE::default();
+        GetTextExtentPoint32W(hdc, &wide, &mut size);
+        let tx = m.x + (m.w - size.cx) / 2;
+        let ty = start_y + i as i32 * line_spacing;
+        TextOutW(hdc, tx, ty, &wide);
+    }
+
+    SelectObject(hdc, old_font);
+    DeleteObject(HGDIOBJ(font.0));
 }
