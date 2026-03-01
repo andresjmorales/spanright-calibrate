@@ -13,6 +13,7 @@ import {
   openUrl,
 } from "./hooks/useTauriCommands";
 import AboutDialog from "./components/AboutDialog";
+import SettingsDialog from "./components/SettingsDialog";
 import { buildSpanrightUrl } from "./spanrightUrl";
 import type { CalibrationResult, CalibrationStatus, Monitor } from "./types";
 
@@ -26,6 +27,7 @@ export default function App() {
     CalibrationResult[]
   >([]);
   const [showAbout, setShowAbout] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -128,6 +130,12 @@ export default function App() {
         <div className="header-actions">
           <button
             className="btn btn-secondary btn-small"
+            onClick={() => setShowSettings(true)}
+          >
+            Settings
+          </button>
+          <button
+            className="btn btn-secondary btn-small"
             onClick={() => setShowAbout(true)}
           >
             About
@@ -168,6 +176,10 @@ export default function App() {
         results={calibrationResults}
         monitors={monitors}
         onCalibrate={handleCalibrate}
+        onClear={() => {
+          setCalibrationResults([]);
+          setCalibrationStatus("idle");
+        }}
       />
 
       {calibrationStatus === "complete" && calibrationResults.length > 0 && (
@@ -191,6 +203,9 @@ export default function App() {
           onClose={() => setShowAbout(false)}
           onOpenUrl={openUrl}
         />
+      )}
+      {showSettings && (
+        <SettingsDialog onClose={() => setShowSettings(false)} />
       )}
     </div>
   );

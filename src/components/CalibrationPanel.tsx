@@ -6,6 +6,7 @@ interface Props {
   results: CalibrationResult[];
   monitors: Monitor[];
   onCalibrate: () => void;
+  onClear: () => void;
 }
 
 export default function CalibrationPanel({
@@ -14,6 +15,7 @@ export default function CalibrationPanel({
   results,
   monitors,
   onCalibrate,
+  onClear,
 }: Props) {
   const canCalibrate = monitorCount >= 2 && status !== "in_progress";
 
@@ -40,6 +42,14 @@ export default function CalibrationPanel({
         >
           {status === "complete" ? "Recalibrate" : "Calibrate"}
         </button>
+        {status === "complete" && results.length > 0 && (
+          <button
+            className="btn btn-secondary"
+            onClick={onClear}
+          >
+            Clear Results
+          </button>
+        )}
         <span className="status-bar" style={{ flex: 1 }}>
           <span
             className={`status-dot ${

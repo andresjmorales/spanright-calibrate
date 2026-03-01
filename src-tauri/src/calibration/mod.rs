@@ -21,7 +21,7 @@ pub struct CalibrationResult {
     pub align_offset_bound: f64,
 }
 
-pub fn run_calibration(monitors: &[Monitor]) -> Result<Vec<CalibrationResult>, String> {
+pub fn run_calibration(monitors: &[Monitor], color1: [u8; 3], color2: [u8; 3]) -> Result<Vec<CalibrationResult>, String> {
     if monitors.len() < 2 {
         return Err("Need at least 2 monitors for calibration".to_string());
     }
@@ -70,6 +70,8 @@ pub fn run_calibration(monitors: &[Monitor]) -> Result<Vec<CalibrationResult>, S
             monitor_labels: monitor_labels.clone(),
             bind_horizontal,
             temp_middles: None,
+            color1,
+            color2,
         })?;
 
         if scale_result.cancelled {
@@ -141,6 +143,8 @@ pub fn run_calibration(monitors: &[Monitor]) -> Result<Vec<CalibrationResult>, S
             monitor_labels: monitor_labels.clone(),
             bind_horizontal,
             temp_middles: Some([temp_mid_m1, temp_mid_m2]),
+            color1,
+            color2,
         })?;
 
         if gap_result.cancelled {
