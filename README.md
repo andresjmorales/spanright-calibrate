@@ -1,6 +1,23 @@
 # Spanright Calibrate
 
+[![Latest Release](https://img.shields.io/github/v/release/andresjmorales/spanright-calibrate)](https://github.com/andresjmorales/spanright-calibrate/releases/latest)
+
 A Windows desktop tool that visually calibrates the physical arrangement of a multi-monitor setup and exports an accurate layout for use with [Spanright](https://spanright.com).
+
+## Installation
+
+Download the latest release from the [Releases page](https://github.com/andresjmorales/spanright-calibrate/releases/latest):
+
+| Format | Description |
+|--------|-------------|
+| `.msi` | Standard Windows installer (recommended) |
+| `.exe` | NSIS installer |
+| `.zip` | Portable — extract and run, no installation needed |
+| `.tar.gz` | Compressed archive |
+
+No additional dependencies are required — everything is bundled.
+
+> **Requirements:** Windows 10 or 11. Multiple monitors must be connected during calibration.
 
 ## What it does
 
