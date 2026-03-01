@@ -1,6 +1,6 @@
 # Spanright Calibrate
 
-A Windows desktop tool that visually calibrates the physical arrangement of a multi-monitor setup and exports an accurate layout for use with [Spanright](https://spanright.com).
+A Windows desktop tool that visually calibrates the physical arrangement of a multi-monitor setup and exports an accurate layout for use with the [Spanright](https://spanright.com) multi-monitor wallpaper alignment tool (Spanright repo [here](https://github.com/andresjmorales/spanright)). This is like a calibration companion app for Spanright.
 
 ## What it does
 
