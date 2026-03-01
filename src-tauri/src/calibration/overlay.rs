@@ -32,6 +32,8 @@ pub struct OverlayConfig {
     /// Per-monitor midpoints from the scale step (y-coords for horizontal, x for vertical).
     /// [0] = midpoint on m1, [1] = midpoint on m2.
     pub temp_middles: Option<[i32; 2]>,
+    pub color1: [u8; 3],
+    pub color2: [u8; 3],
 }
 
 pub struct OverlayResult {
@@ -47,6 +49,9 @@ struct State {
     monitors: Vec<MonitorRect>,
     monitor_labels: Vec<String>,
     bind_horizontal: bool,
+
+    color1: [u8; 3],
+    color2: [u8; 3],
 
     segments: [i32; 4],
     gap: i32,
@@ -131,6 +136,8 @@ fn run_overlay_window(config: OverlayConfig) -> Result<OverlayResult, String> {
             monitors: config.monitors,
             monitor_labels: config.monitor_labels,
             bind_horizontal: config.bind_horizontal,
+            color1: config.color1,
+            color2: config.color2,
             segments: initial_segments,
             gap: 0,
             mid_m1,
@@ -422,28 +429,25 @@ unsafe fn draw_scale(state: &State, hdc: HDC) {
         }
     }
 
-    let blue = rgb(100, 141, 250);
-    let red = rgb(250, 90, 110);
+    let color1 = rgb(state.color1[0], state.color1[1], state.color1[2]);
+    let color2 = rgb(state.color2[0], state.color2[1], state.color2[2]);
     let line_h = 6;
 
     if state.bind_horizontal {
-        // Blue line segments
-        fill_rect(hdc, m1.x, state.segments[0] - line_h / 2, m1.w, line_h, blue);
-        fill_rect(hdc, m2.x, state.segments[1] - line_h / 2, m2.w, line_h, blue);
-        // Red line segments
-        fill_rect(hdc, m1.x, state.segments[2] - line_h / 2, m1.w, line_h, red);
-        fill_rect(hdc, m2.x, state.segments[3] - line_h / 2, m2.w, line_h, red);
+        fill_rect(hdc, m1.x, state.segments[0] - line_h / 2, m1.w, line_h, color1);
+        fill_rect(hdc, m2.x, state.segments[1] - line_h / 2, m2.w, line_h, color1);
+        fill_rect(hdc, m1.x, state.segments[2] - line_h / 2, m1.w, line_h, color2);
+        fill_rect(hdc, m2.x, state.segments[3] - line_h / 2, m2.w, line_h, color2);
     } else {
         let line_w = 6;
-        fill_rect(hdc, state.segments[0] - line_w / 2, m1.y, line_w, m1.h, blue);
-        fill_rect(hdc, state.segments[1] - line_w / 2, m2.y, line_w, m2.h, blue);
-        fill_rect(hdc, state.segments[2] - line_w / 2, m1.y, line_w, m1.h, red);
-        fill_rect(hdc, state.segments[3] - line_w / 2, m2.y, line_w, m2.h, red);
+        fill_rect(hdc, state.segments[0] - line_w / 2, m1.y, line_w, m1.h, color1);
+        fill_rect(hdc, state.segments[1] - line_w / 2, m2.y, line_w, m2.h, color1);
+        fill_rect(hdc, state.segments[2] - line_w / 2, m1.y, line_w, m1.h, color2);
+        fill_rect(hdc, state.segments[3] - line_w / 2, m2.y, line_w, m2.h, color2);
     }
 
-    // Instructions
     let text = "Drag each colored line so it sits at the same physical height on both displays. \n\
-                Keep blue and red as far apart as possible for best accuracy. \n\
+                Keep both lines as far apart as possible for best accuracy. \n\
                 Arrow keys: \u{00B1}1px  |  Enter: confirm  |  Esc: cancel";
     draw_text_at(hdc, m1.x + 20, m1.y + m1.h - 60, text);
     draw_text_at(hdc, m2.x + 20, m2.y + m2.h - 60, text);
@@ -463,8 +467,8 @@ unsafe fn draw_gap(state: &State, hdc: HDC) {
         }
     }
 
-    let blue = rgb(100, 141, 250);
-    let red = rgb(250, 90, 110);
+    let color1 = rgb(state.color1[0], state.color1[1], state.color1[2]);
+    let color2 = rgb(state.color2[0], state.color2[1], state.color2[2]);
     let gap = state.gap;
     let pen_w = 4;
 
@@ -485,12 +489,12 @@ unsafe fn draw_gap(state: &State, hdc: HDC) {
         // shifts by +gap / -gap respectively.
 
         // Left monitor lines are fixed at left_mid (anchored)
-        draw_line(hdc, bx - arm, left_mid - arm, bx - inset, left_mid - inset, blue, pen_w);
-        draw_line(hdc, bx - arm, left_mid + arm, bx - inset, left_mid + inset, red, pen_w);
+        draw_line(hdc, bx - arm, left_mid - arm, bx - inset, left_mid - inset, color1, pen_w);
+        draw_line(hdc, bx - arm, left_mid + arm, bx - inset, left_mid + inset, color2, pen_w);
 
         // Right monitor lines translated by gap
-        draw_line(hdc, bx + inset, right_mid + gap + inset, bx + arm, right_mid + gap + arm, blue, pen_w);
-        draw_line(hdc, bx + inset, right_mid - gap - inset, bx + arm, right_mid - gap - arm, red, pen_w);
+        draw_line(hdc, bx + inset, right_mid + gap + inset, bx + arm, right_mid + gap + arm, color1, pen_w);
+        draw_line(hdc, bx + inset, right_mid - gap - inset, bx + arm, right_mid - gap - arm, color2, pen_w);
     } else {
         let (top_mid, bottom_mid, top_m, bottom_m) = if m1.y < m2.y {
             (state.mid_m1, state.mid_m2, m1, m2)
@@ -502,13 +506,11 @@ unsafe fn draw_gap(state: &State, hdc: HDC) {
         let arm = (top_m.h.min(bottom_m.h) * 2 / 5).max(150);
         let inset = pen_w + 2;
 
-        // Top monitor lines fixed at top_mid
-        draw_line(hdc, top_mid - arm, by - arm, top_mid - inset, by - inset, blue, pen_w);
-        draw_line(hdc, top_mid + arm, by - arm, top_mid + inset, by - inset, red, pen_w);
+        draw_line(hdc, top_mid - arm, by - arm, top_mid - inset, by - inset, color1, pen_w);
+        draw_line(hdc, top_mid + arm, by - arm, top_mid + inset, by - inset, color2, pen_w);
 
-        // Bottom monitor lines translated by gap
-        draw_line(hdc, bottom_mid + gap + inset, by + inset, bottom_mid + gap + arm, by + arm, blue, pen_w);
-        draw_line(hdc, bottom_mid - gap - inset, by + inset, bottom_mid - gap - arm, by + arm, red, pen_w);
+        draw_line(hdc, bottom_mid + gap + inset, by + inset, bottom_mid + gap + arm, by + arm, color1, pen_w);
+        draw_line(hdc, bottom_mid - gap - inset, by + inset, bottom_mid - gap - arm, by + arm, color2, pen_w);
     }
 
     let text = format!(

@@ -32,6 +32,17 @@ export async function openUrl(url: string): Promise<void> {
   return invoke<void>("open_url", { url });
 }
 
+export async function getOverlayColors(): Promise<[[number, number, number], [number, number, number]]> {
+  return invoke<[[number, number, number], [number, number, number]]>("get_overlay_colors");
+}
+
+export async function setOverlayColors(
+  color1: [number, number, number],
+  color2: [number, number, number]
+): Promise<void> {
+  return invoke<void>("set_overlay_colors", { color1, color2 });
+}
+
 export interface EdidInfo {
   manufacturer: string;
   productCode: number;

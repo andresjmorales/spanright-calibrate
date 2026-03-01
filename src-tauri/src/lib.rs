@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 struct DiagonalOverrides(Mutex<HashMap<usize, f64>>);
+struct OverlayColors(Mutex<[[u8; 3]; 2]>);
 
 fn get_monitors(overrides: &DiagonalOverrides) -> Result<Vec<monitors::Monitor>, String> {
     let mut mons = monitors::discover_all()?;
@@ -43,11 +44,32 @@ fn set_monitor_diagonal(
 }
 
 #[tauri::command]
+fn set_overlay_colors(
+    color1: [u8; 3],
+    color2: [u8; 3],
+    colors: tauri::State<'_, OverlayColors>,
+) -> Result<(), String> {
+    let mut c = colors.0.lock().unwrap();
+    *c = [color1, color2];
+    Ok(())
+}
+
+#[tauri::command]
+fn get_overlay_colors(
+    colors: tauri::State<'_, OverlayColors>,
+) -> Result<[[u8; 3]; 2], String> {
+    let c = colors.0.lock().unwrap();
+    Ok(*c)
+}
+
+#[tauri::command]
 fn start_calibration(
     overrides: tauri::State<'_, DiagonalOverrides>,
+    colors: tauri::State<'_, OverlayColors>,
 ) -> Result<Vec<calibration::CalibrationResult>, String> {
     let monitors = get_monitors(&overrides)?;
-    calibration::run_calibration(&monitors)
+    let c = colors.0.lock().unwrap();
+    calibration::run_calibration(&monitors, c[0], c[1])
 }
 
 #[tauri::command]
@@ -128,10 +150,13 @@ fn open_url(url: String) -> Result<(), String> {
 pub fn run() {
     tauri::Builder::default()
         .manage(DiagonalOverrides(Mutex::new(HashMap::new())))
+        .manage(OverlayColors(Mutex::new([[0, 229, 255], [255, 109, 0]])))
         .invoke_handler(tauri::generate_handler![
             discover_monitors,
             set_monitor_diagonal,
             get_monitor_info,
+            set_overlay_colors,
+            get_overlay_colors,
             start_calibration,
             export_calibration_json,
             save_calibration_file,
