@@ -20,6 +20,8 @@ Most multi-monitor setups have monitors of different sizes, pixel densities, and
 
 ## How Calibration Works
 
+This uses a method like that of the [k85 wallpaper tool](https://github.com/kisielo85/k85-wallpaper-tool).
+
 Calibration runs pairwise between adjacent monitors:
 
 1. **Scale calibration** — two colored horizontal lines appear spanning both monitors. You drag each line so they visually align across the physical boundary. The vertical distance between the lines, combined with each monitor's known PPI, determines the relative scale and vertical offset.
