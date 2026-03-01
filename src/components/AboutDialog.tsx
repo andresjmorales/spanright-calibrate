@@ -15,7 +15,7 @@ export default function AboutDialog({ onClose, onOpenUrl }: Props) {
         </div>
         <div className="about-body">
           <div className="about-title">Spanright Calibrate</div>
-          <div className="about-version">v0.1.0</div>
+          <div className="about-version">v0.1.1</div>
           <p className="about-description">
             A desktop tool for visually calibrating multi-monitor layouts.
             Measures physical gaps, height offsets, and pixel density differences
