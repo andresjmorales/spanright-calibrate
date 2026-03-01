@@ -15,8 +15,6 @@ Download the latest release from the [Releases page](https://github.com/andresjm
 | `.zip` | Portable — extract and run, no installation needed |
 | `.tar.gz` | Compressed archive |
 
-No additional dependencies are required — everything is bundled.
-
 > **Requirements:** Windows 10 or 11. Multiple monitors must be connected during calibration.
 
 ## What it does
@@ -80,6 +78,14 @@ npm run tauri build
 ```
 
 The installer will be in `src-tauri/target/release/bundle/`.
+
+## Releases
+1. Create new branch with pattern `release/vX.X.X`
+2. Bump versions in relevant files (`package.json`, `tauri.conf.json`, `cargo.toml`)
+3. Update lock files with `cargo check --manifest-path src-tauri/Cargo.toml ; npm install`
+4. Push branch, create PR into main, and merge
+5. Checkout main locally, pull, add tag (`git checkout main ; git pull ; git tag vX.X.X ; git push origin vX.X.X`)
+6. Check release workflow in [Actions](https://github.com/andresjmorales/spanright-calibrate/actions)
 
 ## Project Structure
 
