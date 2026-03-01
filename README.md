@@ -33,12 +33,6 @@ Most multi-monitor setups have monitors of different sizes, pixel densities, and
 
 5. **Detailed monitor info** — each detected monitor has an info panel showing everything the OS and EDID data can provide: manufacturer, model, serial number, manufacture date, native resolution, color format, bit depth, gamma, refresh rate range, connection type, and more.
 
-### Monitor detection
-<img width="1029" height="662" alt="Screenshot 2026-02-28 234846" src="https://github.com/user-attachments/assets/648b1551-7ada-4f9c-8e9c-acd32242faf6" />
-
-### Post-calibration layout
-<img width="1027" height="661" alt="Screenshot 2026-02-28 234926" src="https://github.com/user-attachments/assets/bac3cb66-f3fc-452f-889e-d8e4f4c04c34" />
-
 ## How Calibration Works
 
 This uses a method like that of the [k85 wallpaper tool](https://github.com/kisielo85/k85-wallpaper-tool).
@@ -50,6 +44,27 @@ Calibration runs pairwise between adjacent monitors:
 2. **Gap calibration** — two diagonal lines (always at 45°) appear on the boundary monitors. You drag them until they form a continuous line across the physical gap. Since the angle is fixed at 45°, the pixel offset directly translates to the physical gap distance in inches.
 
 The math relies on each monitor having a known diagonal size (from EDID, a name-based estimate, or manual entry) to compute pixels-per-inch. All measurements are derived from these PPI values and the pixel offsets you set during calibration.
+
+The following screenshots are from the calibration of my setup: left to right, a 14" 1920x1200 laptop screen, a 24" 1920x1080 primary monitor, and a 34" ultrawide 2560x1080 monitor.
+
+### Monitor detection
+<img width="1029" height="662" alt="Screenshot 2026-02-28 234846" src="https://github.com/user-attachments/assets/648b1551-7ada-4f9c-8e9c-acd32242faf6" />
+
+### Aligning displays 1 and 2
+Scale calibration between displays 1 and 2
+<img width="6400" height="1200" alt="Screenshot 2026-03-01 151236" src="https://github.com/user-attachments/assets/4e32e38e-13e1-439a-a114-c5de0e8a955f" />
+Gap calibration between displays 1 and 2
+<img width="6400" height="1200" alt="Screenshot 2026-03-01 151252" src="https://github.com/user-attachments/assets/137cbd73-7d75-4b62-a42e-8a4a6ed4f4d3" />
+
+### Aligning displays 2 and 3
+Scale calibration between displays 2 and 3
+<img width="6400" height="1200" alt="Screenshot 2026-03-01 151350" src="https://github.com/user-attachments/assets/9bf0c08f-b602-4bfd-9bd3-66b7f124cd13" />
+Gap calibration between displays 2 and 3
+<img width="6400" height="1200" alt="Screenshot 2026-03-01 151406" src="https://github.com/user-attachments/assets/23a2a5c2-4ecc-42b0-9711-fc78df23cbe3" />
+
+### Post-calibration layout
+Once all the calibration steps are completed, the app will show you your measured layout (a 2D representation of the physical layout of your monitors). Then the layout can be loaded directly into Spanright (opens a web link to [spanright.com](https://spanright.com) with the layout encoded in the URL).
+<img width="1027" height="661" alt="Screenshot 2026-02-28 234926" src="https://github.com/user-attachments/assets/bac3cb66-f3fc-452f-889e-d8e4f4c04c34" />
 
 ## Tech Stack
 
