@@ -18,6 +18,12 @@ Most multi-monitor setups have monitors of different sizes, pixel densities, and
 
 5. **Detailed monitor info** — each detected monitor has an info panel showing everything the OS and EDID data can provide: manufacturer, model, serial number, manufacture date, native resolution, color format, bit depth, gamma, refresh rate range, connection type, and more.
 
+### Monitor detection
+<img width="1029" height="662" alt="Screenshot 2026-02-28 234846" src="https://github.com/user-attachments/assets/648b1551-7ada-4f9c-8e9c-acd32242faf6" />
+
+### Post-calibration layout
+<img width="1027" height="661" alt="Screenshot 2026-02-28 234926" src="https://github.com/user-attachments/assets/bac3cb66-f3fc-452f-889e-d8e4f4c04c34" />
+
 ## How Calibration Works
 
 This uses a method like that of the [k85 wallpaper tool](https://github.com/kisielo85/k85-wallpaper-tool).
