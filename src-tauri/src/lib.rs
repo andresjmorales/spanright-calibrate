@@ -75,19 +75,21 @@ fn start_calibration(
 #[tauri::command]
 fn export_calibration_json(
     results: Vec<calibration::CalibrationResult>,
+    include_virtual_layout: bool,
     overrides: tauri::State<'_, DiagonalOverrides>,
 ) -> Result<String, String> {
     let monitors = get_monitors(&overrides)?;
-    export::export_json(&monitors, &results)
+    export::export_json(&monitors, &results, include_virtual_layout)
 }
 
 #[tauri::command]
 fn save_calibration_file(
     results: Vec<calibration::CalibrationResult>,
+    include_virtual_layout: bool,
     overrides: tauri::State<'_, DiagonalOverrides>,
 ) -> Result<String, String> {
     let monitors = get_monitors(&overrides)?;
-    let json = export::export_json(&monitors, &results)?;
+    let json = export::export_json(&monitors, &results, include_virtual_layout)?;
 
     let file = rfd::FileDialog::new()
         .set_title("Save Spanright Layout")

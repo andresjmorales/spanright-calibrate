@@ -4,6 +4,8 @@ interface Props {
   onOpenSpanright: () => void;
   spanrightReady: boolean;
   copied: boolean;
+  includeVirtualLayout: boolean;
+  onToggleVirtualLayout: () => void;
 }
 
 export default function ExportPanel({
@@ -12,10 +14,20 @@ export default function ExportPanel({
   onOpenSpanright,
   spanrightReady,
   copied,
+  includeVirtualLayout,
+  onToggleVirtualLayout,
 }: Props) {
   return (
     <div>
       <div className="section-title">Export</div>
+      <label className="virtual-layout-toggle">
+        <input
+          type="checkbox"
+          checked={includeVirtualLayout}
+          onChange={onToggleVirtualLayout}
+        />
+        <span>Include virtual layout</span>
+      </label>
       <div className="actions">
         <button
           className="btn btn-accent"
@@ -24,7 +36,7 @@ export default function ExportPanel({
         >
           Open in Spanright
         </button>
-        <button className="btn btn-secondary" onClick={onCopyJson}>
+        <button className="btn btn-secondary btn-fixed-copy" onClick={onCopyJson}>
           {copied ? "Copied!" : "Copy JSON"}
         </button>
         <button className="btn btn-secondary" onClick={onSaveFile}>

@@ -24,12 +24,12 @@ Most multi-monitor setups have monitors of different sizes, pixel densities, and
 1. **Discovers monitors** — enumerates all connected displays, reads resolutions, pixel positions, and physical panel dimensions via EDID. For monitors where EDID size data isn't available, it can estimate from the model name or accept a manual diagonal input.
 
 2. **Calibrates physical layout** — guides you through an interactive on-screen alignment process using colored overlay lines drawn directly on your monitors:
-   - **Scale step**: align horizontal colored lines across adjacent monitors to establish vertical alignment and relative pixel density.
+   - **Scale and offset step**: align horizontal colored lines across adjacent monitors to establish vertical/horizontal alignment and offset, and relative pixel density.
    - **Gap step**: align diagonal (45°) lines to measure the precise physical gap between monitors.
 
 3. **Shows your real layout** — renders a physical layout visualization that reflects actual monitor sizes, calibrated gaps, and height offsets — matching what your desk actually looks like.
 
-4. **Exports to Spanright** — generates a configuration matching Spanright's format and can open your calibrated layout directly in the [Spanright editor](https://spanright.com) via a compressed URL. Also supports copying JSON to clipboard or saving to a file.
+4. **Exports to Spanright** — generates a configuration matching Spanright's format and can open your calibrated layout directly in the [Spanright editor](https://spanright.com) via a compressed URL. Also supports copying JSON to clipboard or saving to a file. An **Include virtual layout** checkbox lets you embed the exact Windows virtual-desktop coordinates (pixel positions from Display Settings) so Spanright can reproduce imprecise monitor offsets without manual adjustment.
 
 5. **Detailed monitor info** — each detected monitor has an info panel showing everything the OS and EDID data can provide: manufacturer, model, serial number, manufacture date, native resolution, color format, bit depth, gamma, refresh rate range, connection type, and more.
 
@@ -45,7 +45,7 @@ This uses a method like that of the [k85 wallpaper tool](https://github.com/kisi
 
 Calibration runs pairwise between adjacent monitors:
 
-1. **Scale calibration** — two colored horizontal lines appear spanning both monitors. You drag each line so they visually align across the physical boundary. The vertical distance between the lines, combined with each monitor's known PPI, determines the relative scale and vertical offset.
+1. **Scale and offset calibration** — two colored horizontal lines appear spanning both monitors. You drag each line so they visually align across the physical boundary. The vertical/horizontal distance between the lines, combined with each monitor's known PPI, determines the relative scale and vertical/horizontal offset.
 
 2. **Gap calibration** — two diagonal lines (always at 45°) appear on the boundary monitors. You drag them until they form a continuous line across the physical gap. Since the angle is fixed at 45°, the pixel offset directly translates to the physical gap distance in inches.
 
@@ -71,7 +71,19 @@ npm install
 npm run tauri dev
 ```
 
-A window titled "Spanright Calibrate" will open. To build a production binary:
+A window titled "Spanright Calibrate" will open.
+
+### Local Spanright development
+
+To test against a local Spanright dev server (e.g. `http://localhost:5173`), run Spanright web first (`npm run dev` in the Spanright repo), then:
+
+```bash
+npm run tauri:dev:local
+```
+
+This starts Calibrate's frontend on port 1421 and points "Open in Spanright" at `http://localhost:5173`.
+
+To build a production binary:
 
 ```bash
 npm run tauri build

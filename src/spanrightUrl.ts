@@ -15,9 +15,15 @@ interface UrlMonitor {
   dn?: string;
 }
 
+interface UrlWindowsPosition {
+  px: number;
+  py: number;
+}
+
 interface UrlLayout {
   v: 1;
   m: UrlMonitor[];
+  wp?: UrlWindowsPosition[];
 }
 
 function gcd(a: number, b: number): number {
@@ -74,9 +80,13 @@ function formatResolution(rx: number, ry: number): string {
   return map[`${rx}x${ry}`] || `${rx}x${ry}`;
 }
 
+export const SPANRIGHT_BASE_URL =
+  import.meta.env.VITE_SPANRIGHT_URL || "https://spanright.com";
+
 export function buildSpanrightUrl(
   monitors: Monitor[],
-  results: CalibrationResult[]
+  results: CalibrationResult[],
+  includeVirtualLayout = false
 ): string | null {
   const ppiMap = derivePpi(monitors, results);
   if (ppiMap.size === 0) return null;
@@ -166,11 +176,19 @@ export function buildSpanrightUrl(
   });
 
   const layout: UrlLayout = { v: 1, m: urlMonitors };
+
+  if (includeVirtualLayout) {
+    layout.wp = placed.map((p) => {
+      const m = monitors.find((mon) => mon.id === p.id)!;
+      return { px: m.positionX, py: m.positionY };
+    });
+  }
+
   const json = JSON.stringify(layout);
   const compressed = LZString.compressToEncodedURIComponent(json);
   const encoded = compressed
     ? LAYOUT_ENCODING_LZ_PREFIX + compressed
     : json;
 
-  return `https://spanright.com/#layout=${encoded}`;
+  return `${SPANRIGHT_BASE_URL}/#layout=${encoded}`;
 }
