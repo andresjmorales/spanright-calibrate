@@ -3067,7 +3067,7 @@ dependencies = [
 
 [[package]]
 name = "spanright-calibrate"
-version = "0.1.3"
+version = "1.0.0"
 dependencies = [
  "rfd",
  "serde",
