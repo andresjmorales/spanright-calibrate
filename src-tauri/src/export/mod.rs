@@ -26,6 +26,14 @@ pub struct SpanrightMonitor {
     pub display_name: Option<String>,
 }
 
+/// Per-monitor Windows virtual-desktop position (pixel coords).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SpanrightWindowsPosition {
+    pub pixel_x: i32,
+    pub pixel_y: i32,
+}
+
 /// Matches Spanright's SavedConfig
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -34,6 +42,8 @@ pub struct SpanrightSavedConfig {
     pub name: String,
     pub saved_at: u64,
     pub monitors: Vec<SpanrightMonitor>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub windows_arrangement: Option<Vec<SpanrightWindowsPosition>>,
 }
 
 #[derive(Clone)]
@@ -66,6 +76,7 @@ fn aspect_ratio(rx: u32, ry: u32) -> [u32; 2] {
 pub fn build_spanright_config(
     monitors: &[Monitor],
     results: &[CalibrationResult],
+    include_virtual_layout: bool,
 ) -> SpanrightSavedConfig {
     let placements = compute_physical_placements(monitors, results);
 
@@ -117,6 +128,23 @@ pub fn build_spanright_config(
         })
         .collect();
 
+    let windows_arrangement = if include_virtual_layout {
+        Some(
+            placements
+                .iter()
+                .map(|p| {
+                    let m = &monitors[p.monitor_idx];
+                    SpanrightWindowsPosition {
+                        pixel_x: m.position_x,
+                        pixel_y: m.position_y,
+                    }
+                })
+                .collect(),
+        )
+    } else {
+        None
+    };
+
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
@@ -127,6 +155,7 @@ pub fn build_spanright_config(
         name: "Calibrated Layout".to_string(),
         saved_at: now,
         monitors: spanright_monitors,
+        windows_arrangement,
     }
 }
 
@@ -232,9 +261,9 @@ fn compute_physical_placements(
 pub fn export_json(
     monitors: &[Monitor],
     results: &[CalibrationResult],
+    include_virtual_layout: bool,
 ) -> Result<String, String> {
-    let config = build_spanright_config(monitors, results);
-    // Wrap in array to match Spanright's import format (array of SavedConfigs)
+    let config = build_spanright_config(monitors, results, include_virtual_layout);
     serde_json::to_string_pretty(&[config]).map_err(|e| format!("JSON serialization: {e}"))
 }
 

@@ -203,6 +203,29 @@ html, body, #root {
   margin-top: 2px;
 }
 
+.virtual-layout-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  margin-bottom: 10px;
+  user-select: none;
+}
+
+.virtual-layout-toggle input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+.btn-fixed-copy {
+  min-width: 100px;
+  text-align: center;
+}
+
 .actions {
   display: flex;
   align-items: center;

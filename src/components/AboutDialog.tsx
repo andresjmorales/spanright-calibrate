@@ -57,7 +57,17 @@ export default function AboutDialog({ onClose, onOpenUrl }: Props) {
             </a>
           </div>
           <div className="about-footer">
-            MIT License &middot; Andres Morales
+            MIT License &middot;{" "}
+            <a
+              href="#"
+              className="subtle-link"
+              onClick={(e) => {
+                e.preventDefault();
+                onOpenUrl("https://andresmorales.xyz/");
+              }}
+            >
+              Andrés Morales
+            </a>
           </div>
         </div>
       </div>

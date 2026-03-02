@@ -17,15 +17,17 @@ export async function setMonitorDiagonal(
 }
 
 export async function exportCalibrationJson(
-  results: CalibrationResult[]
+  results: CalibrationResult[],
+  includeVirtualLayout = false
 ): Promise<string> {
-  return invoke<string>("export_calibration_json", { results });
+  return invoke<string>("export_calibration_json", { results, includeVirtualLayout });
 }
 
 export async function saveCalibrationFile(
-  results: CalibrationResult[]
+  results: CalibrationResult[],
+  includeVirtualLayout = false
 ): Promise<string> {
-  return invoke<string>("save_calibration_file", { results });
+  return invoke<string>("save_calibration_file", { results, includeVirtualLayout });
 }
 
 export async function openUrl(url: string): Promise<void> {

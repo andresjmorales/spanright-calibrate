@@ -14,7 +14,7 @@ import {
 } from "./hooks/useTauriCommands";
 import AboutDialog from "./components/AboutDialog";
 import SettingsDialog from "./components/SettingsDialog";
-import { buildSpanrightUrl } from "./spanrightUrl";
+import { buildSpanrightUrl, SPANRIGHT_BASE_URL } from "./spanrightUrl";
 import type { CalibrationResult, CalibrationStatus, Monitor } from "./types";
 
 export default function App() {
@@ -28,6 +28,7 @@ export default function App() {
   >([]);
   const [showAbout, setShowAbout] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [includeVirtualLayout, setIncludeVirtualLayout] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -70,7 +71,7 @@ export default function App() {
 
   const handleCopyJson = async () => {
     try {
-      const json = await exportCalibrationJson(calibrationResults);
+      const json = await exportCalibrationJson(calibrationResults, includeVirtualLayout);
       await navigator.clipboard.writeText(json);
       setError(null);
       setCopyFeedback(true);
@@ -84,7 +85,7 @@ export default function App() {
 
   const handleSaveFile = async () => {
     try {
-      const result = await saveCalibrationFile(calibrationResults);
+      const result = await saveCalibrationFile(calibrationResults, includeVirtualLayout);
       if (result !== "cancelled") {
         setError(null);
       }
@@ -96,7 +97,7 @@ export default function App() {
   };
 
   const handleOpenSpanright = async () => {
-    const url = buildSpanrightUrl(monitors, calibrationResults);
+    const url = buildSpanrightUrl(monitors, calibrationResults, includeVirtualLayout);
     if (!url) {
       setError("Could not build Spanright URL — ensure monitors have diagonal sizes set");
       return;
@@ -120,7 +121,7 @@ export default function App() {
               className="subtle-link"
               onClick={(e) => {
                 e.preventDefault();
-                openUrl("https://spanright.com");
+                openUrl(SPANRIGHT_BASE_URL);
               }}
             >
               Spanright
@@ -194,6 +195,8 @@ export default function App() {
             onOpenSpanright={handleOpenSpanright}
             spanrightReady={monitors.some((m) => m.ppi != null)}
             copied={copyFeedback}
+            includeVirtualLayout={includeVirtualLayout}
+            onToggleVirtualLayout={() => setIncludeVirtualLayout((v) => !v)}
           />
         </>
       )}

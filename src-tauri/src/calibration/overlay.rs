@@ -447,7 +447,7 @@ unsafe fn draw_scale(state: &State, hdc: HDC) {
     }
 
     let text = "Drag each colored line so it sits at the same physical height on both displays. \n\
-                Keep both lines as far apart as possible for best accuracy. \n\
+                Keep both lines far apart for best accuracy. \n\
                 Arrow keys: \u{00B1}1px  |  Enter: confirm  |  Esc: cancel";
     draw_text_at(hdc, m1.x + 20, m1.y + m1.h - 60, text);
     draw_text_at(hdc, m2.x + 20, m2.y + m2.h - 60, text);
@@ -514,7 +514,7 @@ unsafe fn draw_gap(state: &State, hdc: HDC) {
     }
 
     let text = format!(
-        "Gap: {}px  |  Drag or arrow keys to adjust  |  Enter: confirm  |  Esc: cancel",
+        "Gap: {}px  |  Drag or arrow keys to adjust so both diagonal lines are aligned  |  Enter: confirm  |  Esc: cancel",
         gap
     );
     draw_text_at(hdc, m1.x + 20, m1.y + m1.h - 40, &text);
