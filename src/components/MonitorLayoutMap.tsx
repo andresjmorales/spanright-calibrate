@@ -34,13 +34,15 @@ export default function MonitorLayoutMap({ monitors }: Props) {
   const svgH = totalH * scale + padding * 2;
 
   return (
-    <div className="layout-map-container">
-      <svg
-        width={svgW}
-        height={svgH}
-        viewBox={`0 0 ${svgW} ${svgH}`}
-        className="layout-map-svg"
-      >
+    <div>
+      <div className="section-title">Virtual Layout</div>
+      <div className="layout-map-container">
+        <svg
+          width={svgW}
+          height={svgH}
+          viewBox={`0 0 ${svgW} ${svgH}`}
+          className="layout-map-svg"
+        >
         {monitors.map((m, i) => {
           const x = (m.positionX - minX) * scale + padding;
           const y = (m.positionY - minY) * scale + padding;
@@ -101,7 +103,8 @@ export default function MonitorLayoutMap({ monitors }: Props) {
             </g>
           );
         })}
-      </svg>
+        </svg>
+      </div>
     </div>
   );
 }

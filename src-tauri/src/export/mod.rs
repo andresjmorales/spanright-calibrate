@@ -122,7 +122,13 @@ pub fn build_spanright_config(
                 },
                 physical_x: round4(p.x + offset_x),
                 physical_y: round4(p.y + offset_y),
-                rotation: if m.orientation == 1 { Some(90) } else { None },
+                // Windows reports a rotated monitor's resolution in its already-rotated
+                // logical form (e.g. 1080x1920 for a portrait panel), and the preset
+                // resolution/aspectRatio plus physical placement above are all derived
+                // from those rotated dimensions. Emitting rotation here too would make
+                // Spanright rotate an already-portrait monitor a second time. The
+                // orientation is therefore encoded entirely in the dimensions.
+                rotation: None,
                 display_name,
             }
         })
