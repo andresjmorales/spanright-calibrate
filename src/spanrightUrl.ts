@@ -170,7 +170,8 @@ export function buildSpanrightUrl(
       x: round4(p.x + offsetX),
       y: round4(p.y + offsetY),
     };
-    if (m.orientation === 1) entry.rot = 90;
+    // No `rot`: orientation is already baked into rx/ry/ar and placement. See the
+    // rotation note in the JSON exporter (src-tauri/src/export/mod.rs) for details.
     if (m.friendlyName) entry.dn = m.friendlyName;
     return entry;
   });
