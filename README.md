@@ -1,6 +1,41 @@
-# Spanright Calibrate
+<p align="center">
+  <a href="https://github.com/andresjmorales/spanright-calibrate/releases/latest">
+    <img src="./src-tauri/icons/icon.png" alt="Spanright Calibrate logo" width="128" height="128">
+  </a>
+</p>
 
-[![Latest Release](https://img.shields.io/github/v/release/andresjmorales/spanright-calibrate?color=blue)](https://github.com/andresjmorales/spanright-calibrate/releases/latest)
+<h1 align="center">Spanright Calibrate</h1>
+
+<p align="center">
+  Measure how your monitors physically sit on your desk, then open the layout in <a href="https://spanright.com">Spanright</a>.
+</p>
+
+<p align="center">
+  <a href="https://github.com/andresjmorales/spanright-calibrate/releases/latest"><img src="https://img.shields.io/github/v/release/andresjmorales/spanright-calibrate?color=blue" alt="Latest release"></a>
+  <a href="https://github.com/andresjmorales/spanright-calibrate/releases"><img src="https://img.shields.io/github/downloads/andresjmorales/spanright-calibrate/total?color=brightgreen" alt="Total downloads"></a>
+  <a href="https://github.com/andresjmorales/spanright-calibrate/actions/workflows/ci.yml"><img src="https://github.com/andresjmorales/spanright-calibrate/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/github/license/andresjmorales/spanright-calibrate?color=blue" alt="License: MIT"></a>
+  <a href="https://github.com/andresjmorales/spanright-calibrate/commits/main"><img src="https://img.shields.io/github/last-commit/andresjmorales/spanright-calibrate" alt="Last commit"></a>
+  <a href="https://github.com/andresjmorales/spanright-calibrate/stargazers"><img src="https://img.shields.io/github/stars/andresjmorales/spanright-calibrate?style=flat" alt="GitHub stars"></a>
+  <br>
+  <img src="https://img.shields.io/badge/platform-Windows%2010%20|%2011-0078D4" alt="Windows 10 and 11">
+  <img src="https://img.shields.io/badge/Tauri-2-24C8D8?logo=tauri&logoColor=white" alt="Tauri 2">
+  <img src="https://img.shields.io/badge/Rust-000000?logo=rust&logoColor=white" alt="Rust">
+  <img src="https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white" alt="React 19">
+  <img src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white" alt="TypeScript">
+  <a href="https://buymeacoffee.com/andresjmorales"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-FFDD00?logo=buymeacoffee&logoColor=black" alt="Buy Me a Coffee"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/andresjmorales/spanright-calibrate/releases/latest"><b>Download</b></a> ·
+  <a href="https://spanright.com"><b>Spanright</b></a> ·
+  <a href="#how-calibration-works"><b>How it works</b></a> ·
+  <a href="#getting-started"><b>Build from source</b></a>
+</p>
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/bac3cb66-f3fc-452f-889e-d8e4f4c04c34" alt="Spanright Calibrate showing a measured physical layout of three monitors" width="700">
+</p>
 
 A Windows desktop tool that visually calibrates the physical arrangement of a multi-monitor setup and exports an accurate layout for use with the [Spanright](https://spanright.com) multi-monitor wallpaper alignment tool (Spanright repo [here](https://github.com/andresjmorales/spanright)). This is like a calibration companion app for Spanright.
 
