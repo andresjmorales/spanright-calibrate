@@ -9,9 +9,15 @@ use windows::Win32::UI::WindowsAndMessaging::*;
 #[serde(rename_all = "camelCase")]
 pub struct CalibrationResult {
     pub monitor_id: usize,
+    /// PPI ratio of this monitor relative to the monitor it is bound to
+    /// (ppi_unbound / ppi_bound). Consumers derive `ppi_unbound = ppi_bound * scale`,
+    /// so this must be pairwise, not cumulative from the primary monitor.
     pub scale: f64,
     pub relative_x: f64,
     pub relative_y: f64,
+    /// Gap between the two monitors' active areas, in pixels of whichever monitor
+    /// is on the right (horizontal binding) or bottom (vertical binding): the gap
+    /// overlay translates that monitor's diagonal lines by this many of its pixels.
     pub gap: i32,
     pub bound_to: usize,
     pub bind_horizontal: bool,
@@ -88,7 +94,7 @@ pub fn run_calibration(monitors: &[Monitor], color1: [u8; 3], color2: [u8; 3]) -
 
         // off[0..3] are pixel offsets from each monitor's top (or left) edge
         // to each line position: [blue_m1, blue_m2, red_m1, red_m2]
-        let (scale, relative_offset, align_off_m1, align_off_m2) = if bind_horizontal {
+        let (scale, ratio, relative_offset, align_off_m1, align_off_m2) = if bind_horizontal {
             let off = [
                 scale_result.segments[0] - m1r.y,
                 scale_result.segments[1] - m2r.y,
@@ -99,16 +105,15 @@ pub fn run_calibration(monitors: &[Monitor], color1: [u8; 3], color2: [u8; 3]) -
             let span_m1 = (off[2] - off[0]).abs() as f64;
             let span_m2 = (off[3] - off[1]).abs() as f64;
 
-            let scale = if span_m2 > 1.0 {
-                scales[*bound_idx] * (span_m1 / span_m2)
-            } else {
-                scales[*bound_idx]
-            };
+            // Pairwise PPI ratio (unbound / bound): the same physical span covers
+            // span_m1 pixels on the unbound monitor and span_m2 on the bound one.
+            let ratio = if span_m2 > 1.0 { span_m1 / span_m2 } else { 1.0 };
+            let scale = scales[*bound_idx] * ratio;
 
             let mid_m1 = (off[0] + off[2]) as f64 / 2.0;
             let mid_m2 = (off[1] + off[3]) as f64 / 2.0;
             let rel_y = off[1] as f64 - off[0] as f64 * scale;
-            (scale, rel_y, mid_m1, mid_m2)
+            (scale, ratio, rel_y, mid_m1, mid_m2)
         } else {
             let off = [
                 scale_result.segments[0] - m1r.x,
@@ -120,16 +125,15 @@ pub fn run_calibration(monitors: &[Monitor], color1: [u8; 3], color2: [u8; 3]) -
             let span_m1 = (off[2] - off[0]).abs() as f64;
             let span_m2 = (off[3] - off[1]).abs() as f64;
 
-            let scale = if span_m2 > 1.0 {
-                scales[*bound_idx] * (span_m1 / span_m2)
-            } else {
-                scales[*bound_idx]
-            };
+            // Pairwise PPI ratio (unbound / bound): the same physical span covers
+            // span_m1 pixels on the unbound monitor and span_m2 on the bound one.
+            let ratio = if span_m2 > 1.0 { span_m1 / span_m2 } else { 1.0 };
+            let scale = scales[*bound_idx] * ratio;
 
             let mid_m1 = (off[0] + off[2]) as f64 / 2.0;
             let mid_m2 = (off[1] + off[3]) as f64 / 2.0;
             let rel_x = off[1] as f64 - off[0] as f64 * scale;
-            (scale, rel_x, mid_m1, mid_m2)
+            (scale, ratio, rel_x, mid_m1, mid_m2)
         };
 
         scales[*unbound_idx] = scale;
@@ -183,7 +187,7 @@ pub fn run_calibration(monitors: &[Monitor], color1: [u8; 3], color2: [u8; 3]) -
 
         results.push(CalibrationResult {
             monitor_id: *unbound_idx,
-            scale,
+            scale: ratio,
             relative_x,
             relative_y,
             gap,

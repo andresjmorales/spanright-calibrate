@@ -1,5 +1,6 @@
 import LZString from "lz-string";
 import type { CalibrationResult, Monitor } from "./types";
+import { computePhysicalPlacements } from "./physicalLayout";
 
 const LAYOUT_ENCODING_LZ_PREFIX = "~";
 
@@ -42,31 +43,6 @@ function round4(v: number): number {
   return Math.round(v * 10000) / 10000;
 }
 
-function derivePpi(
-  monitors: Monitor[],
-  results: CalibrationResult[]
-): Map<number, number> {
-  const ppiMap = new Map<number, number>();
-  for (const m of monitors) {
-    if (m.ppi != null) ppiMap.set(m.id, m.ppi);
-  }
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const r of results) {
-      if (!ppiMap.has(r.monitorId) && ppiMap.has(r.boundTo)) {
-        ppiMap.set(r.monitorId, ppiMap.get(r.boundTo)! * r.scale);
-        changed = true;
-      }
-      if (!ppiMap.has(r.boundTo) && ppiMap.has(r.monitorId)) {
-        ppiMap.set(r.boundTo, ppiMap.get(r.monitorId)! / r.scale);
-        changed = true;
-      }
-    }
-  }
-  return ppiMap;
-}
-
 function formatResolution(rx: number, ry: number): string {
   const map: Record<string, string> = {
     "1920x1080": "FHD",
@@ -88,61 +64,8 @@ export function buildSpanrightUrl(
   results: CalibrationResult[],
   includeVirtualLayout = false
 ): string | null {
-  const ppiMap = derivePpi(monitors, results);
-  if (ppiMap.size === 0) return null;
-
-  // Build physical placements (same logic as PhysicalLayoutMap)
-  const positions = new Map<number, { x: number; y: number }>();
-  const calibratedIds = new Set(results.map((r) => r.monitorId));
-  const refMon = monitors.find(
-    (m) => !calibratedIds.has(m.id) && ppiMap.has(m.id)
-  );
-  if (!refMon) return null;
-
-  positions.set(refMon.id, { x: 0, y: 0 });
-
-  for (const r of results) {
-    if (!positions.has(r.boundTo)) continue;
-    const ppiBound = ppiMap.get(r.boundTo)!;
-    const ppiUnbound = ppiMap.get(r.monitorId)!;
-    const bound = positions.get(r.boundTo)!;
-    const mUnbound = monitors.find((m) => m.id === r.monitorId)!;
-    const mBound = monitors.find((m) => m.id === r.boundTo)!;
-    const w = mUnbound.resolutionX / ppiUnbound;
-    const h = mUnbound.resolutionY / ppiUnbound;
-
-    let x: number, y: number;
-    if (r.bindHorizontal) {
-      const gapIn = Math.abs(r.gap) / ppiBound;
-      const offsetIn =
-        r.alignOffsetBound / ppiBound - r.alignOffsetUnbound / ppiUnbound;
-      const boundW = mBound.resolutionX / ppiBound;
-      x =
-        mUnbound.positionX < mBound.positionX
-          ? bound.x - w - gapIn
-          : bound.x + boundW + gapIn;
-      y = bound.y + offsetIn;
-    } else {
-      const gapIn = Math.abs(r.gap) / ppiBound;
-      const offsetIn =
-        r.alignOffsetBound / ppiBound - r.alignOffsetUnbound / ppiUnbound;
-      const boundH = mBound.resolutionY / ppiBound;
-      y =
-        mUnbound.positionY < mBound.positionY
-          ? bound.y - h - gapIn
-          : bound.y + boundH + gapIn;
-      x = bound.x + offsetIn;
-    }
-    positions.set(r.monitorId, { x, y });
-  }
-
-  // Center on Spanright's 144"×96" canvas
-  const placed = Array.from(positions.entries())
-    .map(([id, pos]) => {
-      const ppi = ppiMap.get(id)!;
-      const m = monitors.find((mon) => mon.id === id)!;
-      return { id, ...pos, w: m.resolutionX / ppi, h: m.resolutionY / ppi };
-    });
+  const placed = computePhysicalPlacements(monitors, results);
+  if (!placed) return null;
 
   if (placed.length === 0) return null;
 
@@ -156,8 +79,8 @@ export function buildSpanrightUrl(
   const offsetY = 48 - cy;
 
   const urlMonitors: UrlMonitor[] = placed.map((p) => {
-    const m = monitors.find((mon) => mon.id === p.id)!;
-    const ppi = ppiMap.get(p.id)!;
+    const m = p.monitor;
+    const ppi = p.ppi;
     const diagonal = Math.sqrt(
       (m.resolutionX / ppi) ** 2 + (m.resolutionY / ppi) ** 2
     );
@@ -179,10 +102,10 @@ export function buildSpanrightUrl(
   const layout: UrlLayout = { v: 1, m: urlMonitors };
 
   if (includeVirtualLayout) {
-    layout.wp = placed.map((p) => {
-      const m = monitors.find((mon) => mon.id === p.id)!;
-      return { px: m.positionX, py: m.positionY };
-    });
+    layout.wp = placed.map((p) => ({
+      px: p.monitor.positionX,
+      py: p.monitor.positionY,
+    }));
   }
 
   const json = JSON.stringify(layout);
