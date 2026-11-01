@@ -70,7 +70,10 @@ export default function App() {
   // A new virtual layout doesn't change the physical calibration, but results
   // record which side of its partner each monitor was on. If an edit swapped
   // sides, those results no longer describe the desk, so drop them.
-  const handleLayoutApplied = (updated: Monitor[]) => {
+  const handleLayoutApplied = (updated: Monitor[], isUndo: boolean) => {
+    // Someone who just set a precise layout wants Spanright to use it rather
+    // than its auto arrangement, so include it in exports from now on.
+    if (!isUndo) setIncludeVirtualLayout(true);
     const byId = (list: Monitor[], id: number) => list.find((m) => m.id === id);
     const sideFlipped = calibrationResults.some((r) => {
       const [a0, b0, a1, b1] = [

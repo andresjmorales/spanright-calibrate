@@ -17,8 +17,11 @@ import {
 
 interface Props {
   monitors: Monitor[];
-  /** Called with the monitors as Windows reports them after a layout is applied. */
-  onApplied: (monitors: Monitor[]) => void;
+  /**
+   * Called with the monitors as Windows reports them after a layout is applied.
+   * `isUndo` is true when restoring the layout from before the last Apply.
+   */
+  onApplied: (monitors: Monitor[], isUndo: boolean) => void;
   /** Calibration results, used to suggest a layout matching the desk. */
   results: CalibrationResult[];
 }
@@ -160,7 +163,7 @@ export default function MonitorLayoutMap({ monitors, onApplied, results }: Props
       const result = await applyMonitorPositions(
         monitors.map((m) => ({ id: m.id, ...target[m.id]! }))
       );
-      onApplied(result);
+      onApplied(result, isUndo);
       setUndo(isUndo ? null : before);
       // Windows can still nudge a layout it doesn't like; compare against what
       // we asked for (normalized to the primary monitor at 0,0).
@@ -175,7 +178,11 @@ export default function MonitorLayoutMap({ monitors, onApplied, results }: Props
       setMessage(
         adjusted
           ? { text: "Applied, but Windows adjusted the layout. Check the positions below." }
-          : { text: isUndo ? "Previous layout restored." : "Layout applied to Windows." }
+          : {
+              text: isUndo
+                ? "Previous layout restored."
+                : "Layout applied to Windows. Exports now include it (Include virtual layout).",
+            }
       );
     } catch (e) {
       setMessage({ text: e instanceof Error ? e.message : String(e), error: true });
