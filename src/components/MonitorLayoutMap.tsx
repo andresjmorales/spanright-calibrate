@@ -92,11 +92,15 @@ export default function MonitorLayoutMap({ monitors, onApplied, results }: Props
   // Whenever Windows' layout changes (refresh, calibration, apply), start the
   // draft over from it so we never edit stale positions. Done during render
   // (not in an effect) so a draft missing a new monitor is never drawn.
+  // A re-read that changes nothing (e.g. after editing a monitor's size) keeps
+  // the draft.
   const [prevSystem, setPrevSystem] = useState(system);
   if (prevSystem !== system) {
     setPrevSystem(system);
-    setDraft(system);
-    return null;
+    if (!samePositions(prevSystem, system)) {
+      setDraft(system);
+      return null;
+    }
   }
 
   if (monitors.length === 0) return null;
