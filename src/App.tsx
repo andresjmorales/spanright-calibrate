@@ -188,7 +188,11 @@ export default function App() {
         onRefresh={refresh}
       />
 
-      <MonitorLayoutMap monitors={monitors} onApplied={handleLayoutApplied} />
+      <MonitorLayoutMap
+        monitors={monitors}
+        onApplied={handleLayoutApplied}
+        results={calibrationStatus === "complete" ? calibrationResults : []}
+      />
 
       <div>
         <div className="section-title">Detected Monitors</div>

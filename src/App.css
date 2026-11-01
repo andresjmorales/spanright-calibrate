@@ -768,3 +768,15 @@ html, body, #root {
 .layout-edit-ok {
   color: var(--success);
 }
+
+.layout-snap-guide {
+  stroke: var(--accent-hover);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  pointer-events: none;
+}
+
+.layout-map-editing .layout-map-svg {
+  touch-action: none;
+  user-select: none;
+}

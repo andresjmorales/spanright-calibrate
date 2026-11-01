@@ -1,8 +1,13 @@
 import { useMemo, useRef, useState } from "react";
-import type { Monitor } from "../types";
+import type { CalibrationResult, Monitor } from "../types";
 import { applyMonitorPositions } from "../hooks/useTauriCommands";
+import { computePhysicalPlacements } from "../physicalLayout";
 import {
+  constrainPosition,
   edgeOffsets,
+  suggestFromPhysical,
+  type Pos,
+  type SnapGuide,
   moveMonitor,
   positionsOf,
   samePositions,
@@ -14,6 +19,24 @@ interface Props {
   monitors: Monitor[];
   /** Called with the monitors as Windows reports them after a layout is applied. */
   onApplied: (monitors: Monitor[]) => void;
+  /** Calibration results, used to suggest a layout matching the desk. */
+  results: CalibrationResult[];
+}
+
+/** Screen pixels within which a dragged display snaps to an alignment. */
+const SNAP_SCREEN_PX = 8;
+
+interface DragState {
+  id: number;
+  pointerId: number;
+  startClientX: number;
+  startClientY: number;
+  startPos: Pos;
+  /** Draft when the drag started; only the dragged display moves from it. */
+  base: Positions;
+  /** Map transform frozen for the drag so the map doesn't rescale under the cursor. */
+  view: { minX: number; minY: number; scale: number; svgW: number; svgH: number };
+  moved: boolean;
 }
 
 const COLORS = [
@@ -40,7 +63,7 @@ function PencilIcon() {
   );
 }
 
-export default function MonitorLayoutMap({ monitors, onApplied }: Props) {
+export default function MonitorLayoutMap({ monitors, onApplied, results }: Props) {
   const system = useMemo(() => positionsOf(monitors), [monitors]);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Positions>(system);
@@ -50,6 +73,21 @@ export default function MonitorLayoutMap({ monitors, onApplied }: Props) {
   /** System positions from before the last Apply, so it can be undone. */
   const [undo, setUndo] = useState<Positions | null>(null);
   const mapRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const dragRef = useRef<DragState | null>(null);
+  const [dragView, setDragView] = useState<{
+    positions: Positions;
+    guide: SnapGuide | null;
+  } | null>(null);
+
+  const physical = useMemo(
+    () => (results.length ? computePhysicalPlacements(monitors, results) : null),
+    [monitors, results]
+  );
+  const suggestion = useMemo(
+    () => (physical ? suggestFromPhysical(monitors, physical, results) : null),
+    [monitors, physical, results]
+  );
 
   // Whenever Windows' layout changes (refresh, calibration, apply), start the
   // draft over from it so we never edit stale positions. Done during render
@@ -63,7 +101,8 @@ export default function MonitorLayoutMap({ monitors, onApplied }: Props) {
 
   if (monitors.length === 0) return null;
 
-  const positions = editing ? draft : system;
+  const dragging = editing && dragView != null && dragRef.current != null;
+  const positions = editing ? (dragging ? dragView!.positions : draft) : system;
   const dirty = editing && !samePositions(draft, system);
   const validation = editing ? validateLayout(monitors, draft) : null;
 
@@ -84,10 +123,29 @@ export default function MonitorLayoutMap({ monitors, onApplied }: Props) {
     setUndo(null);
   };
 
+  /** Arrow keys: slide along the attached edge, never leaving a gap. */
   const move = (dx: number, dy: number) => {
     if (selected == null) return;
-    setDraft((d) => moveMonitor(monitors, d, selected, dx, dy));
+    const cur = draft[selected]!;
+    const res = constrainPosition(monitors, draft, selected, { x: cur.x + dx, y: cur.y + dy });
+    if (!res) return;
+    setDraft(moveMonitor(monitors, draft, selected, res.pos.x - cur.x, res.pos.y - cur.y));
     setMessage(null);
+  };
+
+  const applySuggestion = () => {
+    if (!suggestion) return;
+    setDraft(suggestion);
+    const err = validateLayout(monitors, suggestion);
+    setMessage(
+      err
+        ? { text: `Suggested layout needs adjusting: ${err}`, error: true }
+        : {
+            text: samePositions(suggestion, system)
+              ? "Your layout already matches the calibrated desk."
+              : "Suggested layout loaded from your calibration — review it, then Apply.",
+          }
+    );
   };
 
   const apply = async (target: Positions, isUndo = false) => {
@@ -160,8 +218,68 @@ export default function MonitorLayoutMap({ monitors, onApplied }: Props) {
   const scaleY = (maxContainerH - padding * 2) / totalH;
   const scale = Math.min(scaleX, scaleY);
 
-  const svgW = totalW * scale + padding * 2;
-  const svgH = totalH * scale + padding * 2;
+  const fitView = {
+    minX,
+    minY,
+    scale,
+    svgW: totalW * scale + padding * 2,
+    svgH: totalH * scale + padding * 2,
+  };
+  const view = dragging ? dragRef.current!.view : fitView;
+  const { svgW, svgH } = view;
+  const sx = (x: number) => (x - view.minX) * view.scale + padding;
+  const sy = (y: number) => (y - view.minY) * view.scale + padding;
+
+  const primaryMon = monitors.find((m) => m.isPrimary);
+  const origin = primaryMon ? positions[primaryMon.id]! : { x: 0, y: 0 };
+
+  const onPointerDown = (e: React.PointerEvent, id: number) => {
+    if (!editing || e.button !== 0) return;
+    e.preventDefault();
+    setSelected(id);
+    mapRef.current?.focus();
+    svgRef.current?.setPointerCapture(e.pointerId);
+    dragRef.current = {
+      id,
+      pointerId: e.pointerId,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      startPos: draft[id]!,
+      base: draft,
+      view: fitView,
+      moved: false,
+    };
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    const d = dragRef.current;
+    if (!d || e.pointerId !== d.pointerId) return;
+    const ddx = e.clientX - d.startClientX;
+    const ddy = e.clientY - d.startClientY;
+    if (!d.moved && Math.hypot(ddx, ddy) < 3) return;
+    d.moved = true;
+    const desired = {
+      x: Math.round(d.startPos.x + ddx / d.view.scale),
+      y: Math.round(d.startPos.y + ddy / d.view.scale),
+    };
+    // Hold Alt to drag without snapping.
+    const snap = e.altKey ? 0 : SNAP_SCREEN_PX / d.view.scale;
+    const res = constrainPosition(monitors, d.base, d.id, desired, snap);
+    if (!res) return;
+    setDragView({ positions: { ...d.base, [d.id]: res.pos }, guide: res.guide });
+  };
+
+  const endDrag = (e: React.PointerEvent) => {
+    const d = dragRef.current;
+    if (!d || e.pointerId !== d.pointerId) return;
+    dragRef.current = null;
+    const final = dragView?.positions[d.id];
+    setDragView(null);
+    if (d.moved && final) {
+      setDraft(moveMonitor(monitors, d.base, d.id, final.x - d.startPos.x, final.y - d.startPos.y));
+      setMessage(null);
+    }
+  };
 
   const sel = monitors.find((m) => m.id === selected);
   const selPos = sel ? draft[sel.id]! : null;
@@ -201,6 +319,11 @@ export default function MonitorLayoutMap({ monitors, onApplied }: Props) {
           height={svgH}
           viewBox={`0 0 ${svgW} ${svgH}`}
           className="layout-map-svg"
+          ref={svgRef}
+          style={{ overflow: "visible" }}
+          onPointerMove={onPointerMove}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
         >
           {editing &&
             monitors.map((m) => {
@@ -210,10 +333,10 @@ export default function MonitorLayoutMap({ monitors, onApplied }: Props) {
               return (
                 <rect
                   key={`ghost-${m.id}`}
-                  x={(p.x - minX) * scale + padding}
-                  y={(p.y - minY) * scale + padding}
-                  width={m.resolutionX * scale}
-                  height={m.resolutionY * scale}
+                  x={sx(p.x)}
+                  y={sy(p.y)}
+                  width={m.resolutionX * view.scale}
+                  height={m.resolutionY * view.scale}
                   rx={4}
                   fill="none"
                   stroke="var(--text-muted)"
@@ -224,10 +347,10 @@ export default function MonitorLayoutMap({ monitors, onApplied }: Props) {
             })}
           {monitors.map((m, i) => {
             const p = positions[m.id]!;
-            const x = (p.x - minX) * scale + padding;
-            const y = (p.y - minY) * scale + padding;
-            const w = m.resolutionX * scale;
-            const h = m.resolutionY * scale;
+            const x = sx(p.x);
+            const y = sy(p.y);
+            const w = m.resolutionX * view.scale;
+            const h = m.resolutionY * view.scale;
             const color = COLORS[i % COLORS.length]!;
             const isSel = editing && m.id === selected;
 
@@ -238,16 +361,12 @@ export default function MonitorLayoutMap({ monitors, onApplied }: Props) {
             return (
               <g
                 key={m.id}
-                onMouseDown={
+                onPointerDown={(e) => onPointerDown(e, m.id)}
+                style={
                   editing
-                    ? (e) => {
-                        e.preventDefault();
-                        setSelected(m.id);
-                        mapRef.current?.focus();
-                      }
+                    ? { cursor: dragging && m.id === dragRef.current?.id ? "grabbing" : "grab" }
                     : undefined
                 }
-                style={editing ? { cursor: "pointer" } : undefined}
               >
                 <rect
                   x={x}
@@ -291,20 +410,42 @@ export default function MonitorLayoutMap({ monitors, onApplied }: Props) {
                   fontSize={fontSize * 0.8}
                   opacity={0.6}
                 >
-                  {editing ? `${p.x}, ${p.y}` : `${m.resolutionX}x${m.resolutionY}`}
+                  {editing
+                    ? `${p.x - origin.x}, ${p.y - origin.y}`
+                    : `${m.resolutionX}x${m.resolutionY}`}
                 </text>
               </g>
             );
           })}
+          {dragging && dragView!.guide && (
+            dragView!.guide.axis === "x" ? (
+              <line
+                x1={sx(dragView!.guide.at)}
+                x2={sx(dragView!.guide.at)}
+                y1={0}
+                y2={svgH}
+                className="layout-snap-guide"
+              />
+            ) : (
+              <line
+                x1={0}
+                x2={svgW}
+                y1={sy(dragView!.guide.at)}
+                y2={sy(dragView!.guide.at)}
+                className="layout-snap-guide"
+              />
+            )
+          )}
         </svg>
       </div>
 
       {editing && (
         <div className="layout-edit-panel">
           <div className="layout-edit-hint">
-            Click a display (or press 1–9), then use the arrow keys to move it 1 px —
-            Shift for 10 px, Ctrl for 100 px. Nothing changes in Windows until you
-            click Apply.
+            Drag a display to slide it along (and around) its neighbours — it snaps to
+            aligned edges; hold Alt to place it freely. For pixel-exact nudges, select a
+            display (click or press 1–9) and use the arrow keys: 1 px, Shift 10 px, Ctrl
+            100 px. Nothing changes in Windows until you click Apply.
           </div>
 
           {sel && selPos && (
@@ -348,7 +489,7 @@ export default function MonitorLayoutMap({ monitors, onApplied }: Props) {
           )}
           {sel && (
             <ul className="layout-edit-offsets">
-              {edgeOffsets(monitors, draft, sel.id).map((t) => (
+              {edgeOffsets(monitors, positions, sel.id).map((t) => (
                 <li key={t}>{t}</li>
               ))}
             </ul>
@@ -381,6 +522,18 @@ export default function MonitorLayoutMap({ monitors, onApplied }: Props) {
                 Reset to system settings
               </button>
             )}
+            <button
+              className="btn btn-secondary btn-small"
+              onClick={applySuggestion}
+              disabled={!suggestion || applying}
+              title={
+                suggestion
+                  ? "Arrange displays so the cursor crosses each edge where the screens physically meet"
+                  : "Run a calibration first to get a suggestion from your physical layout"
+              }
+            >
+              Match physical layout
+            </button>
             {undo && !dirty && (
               <button
                 className="btn btn-secondary btn-small"
