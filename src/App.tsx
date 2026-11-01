@@ -67,6 +67,30 @@ export default function App() {
     }
   };
 
+  // A new virtual layout doesn't change the physical calibration, but results
+  // record which side of its partner each monitor was on. If an edit swapped
+  // sides, those results no longer describe the desk, so drop them.
+  const handleLayoutApplied = (updated: Monitor[]) => {
+    const byId = (list: Monitor[], id: number) => list.find((m) => m.id === id);
+    const sideFlipped = calibrationResults.some((r) => {
+      const [a0, b0, a1, b1] = [
+        byId(monitors, r.monitorId),
+        byId(monitors, r.boundTo),
+        byId(updated, r.monitorId),
+        byId(updated, r.boundTo),
+      ];
+      if (!a0 || !b0 || !a1 || !b1) return true;
+      return r.bindHorizontal
+        ? a0.positionX < b0.positionX !== a1.positionX < b1.positionX
+        : a0.positionY < b0.positionY !== a1.positionY < b1.positionY;
+    });
+    setMonitors(updated);
+    if (sideFlipped) {
+      setCalibrationResults([]);
+      setCalibrationStatus("idle");
+    }
+  };
+
   const [copyFeedback, setCopyFeedback] = useState(false);
 
   const handleCopyJson = async () => {
@@ -164,7 +188,7 @@ export default function App() {
         onRefresh={refresh}
       />
 
-      <MonitorLayoutMap monitors={monitors} />
+      <MonitorLayoutMap monitors={monitors} onApplied={handleLayoutApplied} />
 
       <div>
         <div className="section-title">Detected Monitors</div>
