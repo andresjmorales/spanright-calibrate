@@ -37,6 +37,10 @@ jobs:
       - name: Install frontend deps
         run: npm ci
 
+      # Frontend unit tests (virtual layout editing + suggestion logic).
+      - name: Frontend unit tests
+        run: npm test
+
       # Mirrors the release build (frontend build + Tauri version-sync check
       # + Rust compile) but skips slow installer packaging via --no-bundle.
       # Keeping this in sync with release.yml means a green CI implies a green release.

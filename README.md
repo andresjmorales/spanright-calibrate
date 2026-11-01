@@ -143,6 +143,13 @@ npm run tauri build
 
 The installer will be in `src-tauri/target/release/bundle/`.
 
+To run the tests:
+
+```bash
+npm test                                          # frontend (Vitest)
+cargo test --manifest-path src-tauri/Cargo.toml   # Rust (Windows only)
+```
+
 ## Releases
 1. Create new branch with pattern `release/vX.X.X`
 2. Bump versions in relevant files (`package.json`, `tauri.conf.json`, `cargo.toml`)
@@ -168,6 +175,7 @@ spanright-calibrate/
 │   ├── hooks/
 │   │   └── useTauriCommands.ts   # Tauri invoke wrappers
 │   ├── layoutEdit.ts             # Virtual layout editing + validation
+│   ├── layoutEdit.test.ts        # Vitest tests for the layout editor logic
 │   ├── spanrightUrl.ts           # Spanright URL encoder
 │   └── types.ts                  # Shared TypeScript types
 ├── src-tauri/                    # Rust backend
