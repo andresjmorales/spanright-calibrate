@@ -135,7 +135,7 @@ fn apply_monitor_positions(
     if positions.len() != current.len()
         || current.iter().any(|m| positions.iter().filter(|p| p.id == m.id).count() != 1)
     {
-        return Err("Monitors changed since the layout was loaded — refresh and try again".into());
+        return Err("Monitors changed since the layout was loaded. Refresh and try again.".into());
     }
     let primary = current
         .iter()

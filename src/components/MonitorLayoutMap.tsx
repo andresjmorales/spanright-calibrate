@@ -143,7 +143,7 @@ export default function MonitorLayoutMap({ monitors, onApplied, results }: Props
         : {
             text: samePositions(suggestion, system)
               ? "Your layout already matches the calibrated desk."
-              : "Suggested layout loaded from your calibration — review it, then Apply.",
+              : "Suggested layout loaded from your calibration. Review it, then click Apply.",
           }
     );
   };
@@ -170,7 +170,7 @@ export default function MonitorLayoutMap({ monitors, onApplied, results }: Props
       const adjusted = !samePositions(asked, positionsOf(result));
       setMessage(
         adjusted
-          ? { text: "Applied, but Windows adjusted the layout — check the positions below." }
+          ? { text: "Applied, but Windows adjusted the layout. Check the positions below." }
           : { text: isUndo ? "Previous layout restored." : "Layout applied to Windows." }
       );
     } catch (e) {
@@ -442,7 +442,7 @@ export default function MonitorLayoutMap({ monitors, onApplied, results }: Props
       {editing && (
         <div className="layout-edit-panel">
           <div className="layout-edit-hint">
-            Drag a display to slide it along (and around) its neighbours — it snaps to
+            Drag a display to slide it along (and around) its neighbours. It snaps to
             aligned edges; hold Alt to place it freely. For pixel-exact nudges, select a
             display (click or press 1–9) and use the arrow keys: 1 px, Shift 10 px, Ctrl
             100 px. Nothing changes in Windows until you click Apply.
@@ -456,7 +456,7 @@ export default function MonitorLayoutMap({ monitors, onApplied, results }: Props
               </strong>
               {sel.isPrimary ? (
                 <span className="layout-edit-muted">
-                  The primary display stays at 0, 0 — moving it shifts the others.
+                  The primary display stays at 0, 0, so moving it shifts the others.
                 </span>
               ) : (
                 <>

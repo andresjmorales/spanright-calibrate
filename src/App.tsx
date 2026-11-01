@@ -123,7 +123,7 @@ export default function App() {
   const handleOpenSpanright = async () => {
     const url = buildSpanrightUrl(monitors, calibrationResults, includeVirtualLayout);
     if (!url) {
-      setError("Could not build Spanright URL — ensure monitors have diagonal sizes set");
+      setError("Could not build Spanright URL. Make sure every monitor has a diagonal size set.");
       return;
     }
     try {
