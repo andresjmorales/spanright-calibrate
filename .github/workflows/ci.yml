@@ -42,3 +42,8 @@ jobs:
       # Keeping this in sync with release.yml means a green CI implies a green release.
       - name: Build Tauri app (no bundle)
         run: npm run tauri build -- --no-bundle
+
+      # Unit tests (export placement math). Runs after the build so the
+      # frontend dist that tauri::generate_context! needs already exists.
+      - name: Rust unit tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml

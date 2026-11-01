@@ -39,7 +39,21 @@ fn set_monitor_diagonal(
     if diagonal <= 0.0 || diagonal > 200.0 {
         return Err("Diagonal must be between 0 and 200 inches".into());
     }
+    // EDID sizes can be overridden too (the UI asks for an explicit "override"),
+    // since some TVs and projectors report bogus physical sizes.
+    if !monitors::discover_all()?.iter().any(|m| m.id == id) {
+        return Err("Monitor not found".into());
+    }
     overrides.0.lock().unwrap().insert(id, diagonal);
+    Ok(())
+}
+
+#[tauri::command]
+fn clear_monitor_diagonal(
+    id: usize,
+    overrides: tauri::State<'_, DiagonalOverrides>,
+) -> Result<(), String> {
+    overrides.0.lock().unwrap().remove(&id);
     Ok(())
 }
 
@@ -140,12 +154,33 @@ fn get_monitor_info(id: usize) -> Result<Option<MonitorDetailInfo>, String> {
     }))
 }
 
+/// Open an http(s) URL in the default browser. Uses ShellExecuteW directly rather than
+/// `cmd /C start`, which would treat characters like `&`, `|` or `%` in the URL as shell syntax.
 #[tauri::command]
 fn open_url(url: String) -> Result<(), String> {
-    std::process::Command::new("cmd")
-        .args(["/C", "start", "", &url])
-        .spawn()
-        .map_err(|e| format!("Failed to open URL: {e}"))?;
+    use windows::core::{w, PCWSTR};
+    use windows::Win32::UI::Shell::ShellExecuteW;
+    use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+
+    let lower = url.to_ascii_lowercase();
+    if !(lower.starts_with("https://") || lower.starts_with("http://")) {
+        return Err("Only http(s) URLs can be opened".into());
+    }
+    let wide: Vec<u16> = url.encode_utf16().chain(std::iter::once(0)).collect();
+    let result = unsafe {
+        ShellExecuteW(
+            None,
+            w!("open"),
+            PCWSTR(wide.as_ptr()),
+            PCWSTR::null(),
+            PCWSTR::null(),
+            SW_SHOWNORMAL,
+        )
+    };
+    // ShellExecuteW returns a value > 32 on success.
+    if result.0 as isize <= 32 {
+        return Err(format!("Failed to open URL (ShellExecute error {})", result.0 as isize));
+    }
     Ok(())
 }
 
@@ -156,6 +191,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             discover_monitors,
             set_monitor_diagonal,
+            clear_monitor_diagonal,
             get_monitor_info,
             set_overlay_colors,
             get_overlay_colors,

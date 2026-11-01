@@ -27,4 +27,5 @@ features = [
     "Win32_UI_Input_KeyboardAndMouse",
     "Win32_Devices_DeviceAndDriverInstallation",
     "Win32_System_Registry",
+    "Win32_UI_Shell",
 ]

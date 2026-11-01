@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import type { Monitor } from "../types";
 import {
   setMonitorDiagonal,
+  clearMonitorDiagonal,
   getMonitorInfo,
   type MonitorDetailInfo,
 } from "../hooks/useTauriCommands";
@@ -26,10 +27,15 @@ function DiagonalField({
   onRefresh: () => void;
 }) {
   const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(
-    monitor.diagonalIn != null ? monitor.diagonalIn.toFixed(1) : ""
-  );
+  const [value, setValue] = useState("");
   const [saving, setSaving] = useState(false);
+  const formatted =
+    monitor.diagonalIn != null ? `${monitor.diagonalIn.toFixed(1)}"` : "? size";
+
+  const startEditing = () => {
+    setValue(monitor.diagonalIn != null ? monitor.diagonalIn.toFixed(1) : "");
+    setEditing(true);
+  };
 
   const save = async () => {
     const num = parseFloat(value);
@@ -46,6 +52,15 @@ function DiagonalField({
     } finally {
       setSaving(false);
       setEditing(false);
+    }
+  };
+
+  const reset = async () => {
+    try {
+      await clearMonitorDiagonal(monitor.id);
+      onRefresh();
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -73,20 +88,47 @@ function DiagonalField({
     );
   }
 
+  // A size reported by the monitor itself (EDID) is normally more accurate than a
+  // typed-in diagonal, so it isn't directly editable. Some TVs, projectors and cheap
+  // panels report bogus sizes, though, so an explicit override is still available.
+  if (monitor.sizeSource === "edid") {
+    return (
+      <span className="diagonal-field">
+        <span
+          className="diagonal-locked"
+          title="Size reported by the monitor (EDID)"
+        >
+          {formatted}
+        </span>
+        <button
+          className="diagonal-action"
+          onClick={startEditing}
+          title="Only needed if the monitor reports the wrong size (some TVs and projectors do)"
+        >
+          override
+        </button>
+      </span>
+    );
+  }
+
   return (
-    <span
-      className="diagonal-display"
-      onClick={() => {
-        setValue(
-          monitor.diagonalIn != null ? monitor.diagonalIn.toFixed(1) : ""
-        );
-        setEditing(true);
-      }}
-      title="Click to edit diagonal size"
-    >
-      {monitor.diagonalIn != null
-        ? `${monitor.diagonalIn.toFixed(1)}"`
-        : "? size"}
+    <span className="diagonal-field">
+      <span
+        className="diagonal-display"
+        onClick={startEditing}
+        title="Click to edit diagonal size"
+      >
+        {formatted}
+      </span>
+      {monitor.sizeSource === "manual" && (
+        <button
+          className="diagonal-action"
+          onClick={reset}
+          title="Discard the manual diagonal and use the detected size"
+        >
+          reset
+        </button>
+      )}
     </span>
   );
 }

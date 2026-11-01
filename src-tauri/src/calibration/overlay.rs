@@ -446,9 +446,15 @@ unsafe fn draw_scale(state: &State, hdc: HDC) {
         fill_rect(hdc, state.segments[3] - line_w / 2, m2.y, line_w, m2.h, color2);
     }
 
-    let text = "Drag each colored line so it sits at the same physical height on both displays. \n\
-                Keep both lines far apart for best accuracy. \n\
-                Arrow keys: \u{00B1}1px  |  Enter: confirm  |  Esc: cancel";
+    // Side-by-side pairs use horizontal lines (match heights); stacked pairs use
+    // vertical lines (match horizontal positions).
+    let text = if state.bind_horizontal {
+        "Drag each colored line so it sits at the same physical height on both displays.  \
+         Keep both lines far apart for best accuracy.  |  Arrow keys: \u{00B1}1px  |  Enter: confirm  |  Esc: cancel"
+    } else {
+        "Drag each colored line so it sits at the same physical left-right position on both displays.  \
+         Keep both lines far apart for best accuracy.  |  Arrow keys: \u{00B1}1px  |  Enter: confirm  |  Esc: cancel"
+    };
     draw_text_at(hdc, m1.x + 20, m1.y + m1.h - 60, text);
     draw_text_at(hdc, m2.x + 20, m2.y + m2.h - 60, text);
 }
@@ -479,7 +485,10 @@ unsafe fn draw_gap(state: &State, hdc: HDC) {
             (state.mid_m2, state.mid_m1, m2, m1)
         };
 
+        // Each monitor's lines meet that monitor's own edge. In the virtual desktop the two
+        // edges normally coincide, but a calibration pair isn't always directly adjacent there.
         let bx = left_m.x + left_m.w;
+        let bx_right = right_m.x;
         let arm = (left_m.w.min(right_m.w) * 2 / 5).max(150);
         let inset = pen_w + 2; // pull lines back from edges to prevent bleed
 
@@ -493,8 +502,8 @@ unsafe fn draw_gap(state: &State, hdc: HDC) {
         draw_line(hdc, bx - arm, left_mid + arm, bx - inset, left_mid + inset, color2, pen_w);
 
         // Right monitor lines translated by gap
-        draw_line(hdc, bx + inset, right_mid + gap + inset, bx + arm, right_mid + gap + arm, color1, pen_w);
-        draw_line(hdc, bx + inset, right_mid - gap - inset, bx + arm, right_mid - gap - arm, color2, pen_w);
+        draw_line(hdc, bx_right + inset, right_mid + gap + inset, bx_right + arm, right_mid + gap + arm, color1, pen_w);
+        draw_line(hdc, bx_right + inset, right_mid - gap - inset, bx_right + arm, right_mid - gap - arm, color2, pen_w);
     } else {
         let (top_mid, bottom_mid, top_m, bottom_m) = if m1.y < m2.y {
             (state.mid_m1, state.mid_m2, m1, m2)
@@ -503,14 +512,16 @@ unsafe fn draw_gap(state: &State, hdc: HDC) {
         };
 
         let by = top_m.y + top_m.h;
+        let by_bottom = bottom_m.y;
         let arm = (top_m.h.min(bottom_m.h) * 2 / 5).max(150);
         let inset = pen_w + 2;
 
         draw_line(hdc, top_mid - arm, by - arm, top_mid - inset, by - inset, color1, pen_w);
         draw_line(hdc, top_mid + arm, by - arm, top_mid + inset, by - inset, color2, pen_w);
 
-        draw_line(hdc, bottom_mid + gap + inset, by + inset, bottom_mid + gap + arm, by + arm, color1, pen_w);
-        draw_line(hdc, bottom_mid - gap - inset, by + inset, bottom_mid - gap - arm, by + arm, color2, pen_w);
+        // Same scheme rotated 90°: the bottom monitor's lines are translated horizontally by gap.
+        draw_line(hdc, bottom_mid + gap + inset, by_bottom + inset, bottom_mid + gap + arm, by_bottom + arm, color1, pen_w);
+        draw_line(hdc, bottom_mid - gap - inset, by_bottom + inset, bottom_mid - gap - arm, by_bottom + arm, color2, pen_w);
     }
 
     let text = format!(
