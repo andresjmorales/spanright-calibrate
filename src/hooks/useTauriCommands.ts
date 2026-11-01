@@ -16,6 +16,11 @@ export async function setMonitorDiagonal(
   return invoke<void>("set_monitor_diagonal", { id, diagonal });
 }
 
+/** Remove a manual diagonal override, reverting to the EDID/estimated size. */
+export async function clearMonitorDiagonal(id: number): Promise<void> {
+  return invoke<void>("clear_monitor_diagonal", { id });
+}
+
 export async function exportCalibrationJson(
   results: CalibrationResult[],
   includeVirtualLayout = false

@@ -192,7 +192,46 @@ export default function PhysicalLayoutMap({ monitors, results }: Props) {
                 </g>
               );
             }
-            return null;
+
+            // Stacked pair: annotate the vertical gap to the left of the two monitors.
+            const topRect = a.y < b.y ? a : b;
+            const bottomRect = a.y < b.y ? b : a;
+            const gapInches = bottomRect.y - (topRect.y + topRect.h);
+            if (gapInches < 0.05) return null;
+            const gapY1 = (topRect.y + topRect.h - minY) * pxPerInch + padding;
+            const gapY2 = (bottomRect.y - minY) * pxPerInch + padding;
+            const leftEdge = Math.min(
+              (a.x - minX) * pxPerInch + padding,
+              (b.x - minX) * pxPerInch + padding
+            );
+            const annotX = leftEdge - 6;
+            const midY = (gapY1 + gapY2) / 2;
+
+            return (
+              <g key={`gap-${r.monitorId}`} opacity={0.6}>
+                <line x1={annotX - 4} y1={gapY1} x2={annotX + 4} y2={gapY1} stroke="#9aa0a6" strokeWidth={1} />
+                <line
+                  x1={annotX}
+                  y1={gapY1}
+                  x2={annotX}
+                  y2={gapY2}
+                  stroke="#9aa0a6"
+                  strokeWidth={1}
+                  strokeDasharray="3,2"
+                />
+                <line x1={annotX - 4} y1={gapY2} x2={annotX + 4} y2={gapY2} stroke="#9aa0a6" strokeWidth={1} />
+                <text
+                  x={annotX - 8}
+                  y={midY}
+                  textAnchor="middle"
+                  fill="#9aa0a6"
+                  fontSize={9}
+                  transform={`rotate(-90 ${annotX - 8} ${midY})`}
+                >
+                  {gapInches.toFixed(2)}"
+                </text>
+              </g>
+            );
           })}
         </svg>
       </div>

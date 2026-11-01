@@ -418,6 +418,212 @@ mod tests {
         assert!((right.x - 10.0).abs() < 1e-9, "x = {}", right.x);
     }
 
+    // ---- End-to-end simulation of the two overlay steps ----
+
+    /// Ground truth for one monitor: virtual-desktop position + physical placement.
+    struct Truth {
+        ppi: f64,
+        phys_x: f64, // inches, top-left of the active area
+        phys_y: f64,
+    }
+
+    fn to_phys(m: &Monitor, t: &Truth, px: f64, py: f64) -> (f64, f64) {
+        (
+            t.phys_x + (px - m.position_x as f64) / t.ppi,
+            t.phys_y + (py - m.position_y as f64) / t.ppi,
+        )
+    }
+
+    /// What a user produces in the overlay for the pair (unbound, bound), given the
+    /// true physical layout. Scale step: two lines per monitor at the same physical
+    /// coordinates. Gap step: the gap value at which the far monitor's diagonal lines
+    /// (drawn exactly as in overlay::draw_gap) continue the near monitor's lines.
+    fn simulate_pair(
+        mons: &[Monitor],
+        truth: &[Truth],
+        unbound: usize,
+        bound: usize,
+        bound_scale: f64,
+    ) -> (CalibrationResult, f64) {
+        use crate::calibration::{flow, pair};
+        let (mu, mb) = (&mons[unbound], &mons[bound]);
+        let (tu, tb) = (&truth[unbound], &truth[bound]);
+        let horizontal = flow::determine_bind_horizontal(mu, mb);
+
+        // Scale step: pick two physical coordinates inside both monitors' shared span.
+        let (lo, hi) = if horizontal {
+            let top = tu.phys_y.max(tb.phys_y);
+            let bot = (tu.phys_y + mu.resolution_y as f64 / tu.ppi)
+                .min(tb.phys_y + mb.resolution_y as f64 / tb.ppi);
+            (top + (bot - top) * 0.2, top + (bot - top) * 0.8)
+        } else {
+            let left = tu.phys_x.max(tb.phys_x);
+            let right = (tu.phys_x + mu.resolution_x as f64 / tu.ppi)
+                .min(tb.phys_x + mb.resolution_x as f64 / tb.ppi);
+            (left + (right - left) * 0.2, left + (right - left) * 0.8)
+        };
+        let px_at = |m: &Monitor, t: &Truth, phys: f64| -> i32 {
+            if horizontal {
+                m.position_y + ((phys - t.phys_y) * t.ppi).round() as i32
+            } else {
+                m.position_x + ((phys - t.phys_x) * t.ppi).round() as i32
+            }
+        };
+        let segments = [px_at(mu, tu, lo), px_at(mb, tb, lo), px_at(mu, tu, hi), px_at(mb, tb, hi)];
+        let mid_u = (segments[0] + segments[2]) / 2;
+        let mid_b = (segments[1] + segments[3]) / 2;
+
+        // Gap step, mirroring draw_gap: near (left/top) lines meet the near monitor's far
+        // edge at near_mid; far lines start at the far monitor's own edge, shifted by gap.
+        let unbound_first = if horizontal {
+            mu.position_x < mb.position_x
+        } else {
+            mu.position_y < mb.position_y
+        };
+        let (near, tn, near_mid, far, tf, far_mid) = if unbound_first {
+            (mu, tu, mid_u, mb, tb, mid_b)
+        } else {
+            (mb, tb, mid_b, mu, tu, mid_u)
+        };
+        let misalignment = |gap: i32| -> f64 {
+            // color1 runs +45° (down-right), color2 the mirror; both must line up.
+            let mut err = 0.0;
+            for sign in [1.0, -1.0] {
+                let (ex, ey, fx, fy) = if horizontal {
+                    let edge = (near.position_x + near.resolution_x as i32) as f64;
+                    let (ex, ey) = to_phys(near, tn, edge, near_mid as f64);
+                    let (fx, fy) = to_phys(far, tf, far.position_x as f64, far_mid as f64 + sign * gap as f64);
+                    (ex, ey, fx, fy)
+                } else {
+                    let edge = (near.position_y + near.resolution_y as i32) as f64;
+                    let (ex, ey) = to_phys(near, tn, near_mid as f64, edge);
+                    let (fx, fy) = to_phys(far, tf, far_mid as f64 + sign * gap as f64, far.position_y as f64);
+                    (ex, ey, fx, fy)
+                };
+                // On a 45° line through (ex, ey): the cross-boundary distance equals the
+                // along-boundary shift (times the line's direction sign).
+                err += if horizontal {
+                    ((fy - ey) - sign * (fx - ex)).abs()
+                } else {
+                    ((fx - ex) - sign * (fy - ey)).abs()
+                };
+            }
+            err
+        };
+        let gap = (-500..=2000)
+            .min_by(|a, b| misalignment(*a).partial_cmp(&misalignment(*b)).unwrap())
+            .unwrap();
+
+        pair::pair_result(
+            mons,
+            unbound,
+            bound,
+            pair::Origin { x: mu.position_x, y: mu.position_y },
+            pair::Origin { x: mb.position_x, y: mb.position_y },
+            horizontal,
+            segments,
+            gap,
+            bound_scale,
+        )
+    }
+
+    fn assert_layout_recovered(mons: Vec<Monitor>, truth: Vec<Truth>) {
+        let order = crate::calibration::flow::compute_calibration_order(&mons);
+        let mut scales = vec![1.0; mons.len()];
+        let mut results = Vec::new();
+        for (u, b) in order {
+            let (r, s) = simulate_pair(&mons, &truth, u, b, scales[b]);
+            scales[u] = s;
+            results.push(r);
+        }
+        let placements = compute_physical_placements(&mons, &results);
+        assert_eq!(placements.len(), mons.len());
+        let primary = mons.iter().position(|m| m.is_primary).unwrap();
+        let (rx, ry) = (truth[primary].phys_x, truth[primary].phys_y);
+        for p in &placements {
+            let t = &truth[p.monitor_idx];
+            let m = &mons[p.monitor_idx];
+            // Placement is relative to the primary at (0, 0). Allow ~1.5 px of
+            // rounding (scale lines and midpoints are integer pixels).
+            let tol = 1.5 / t.ppi;
+            assert!((p.x - (t.phys_x - rx)).abs() < tol, "monitor {} x {} vs {}", p.monitor_idx, p.x, t.phys_x - rx);
+            assert!((p.y - (t.phys_y - ry)).abs() < tol, "monitor {} y {} vs {}", p.monitor_idx, p.y, t.phys_y - ry);
+            assert!((p.w - m.resolution_x as f64 / t.ppi).abs() < 0.02, "monitor {} w", p.monitor_idx);
+        }
+    }
+
+    #[test]
+    fn stacked_unbound_below_with_offset_and_different_ppi() {
+        // Primary 27" QHD on top; a 1080p laptop-ish panel below, shifted right, 0.9" gap.
+        let mons = vec![
+            monitor(0, 2560, 1440, 0, 0, Some(108.8)),
+            monitor(1, 1920, 1080, 400, 1440, Some(141.2)),
+        ];
+        let truth = vec![
+            Truth { ppi: 108.8, phys_x: 0.0, phys_y: 0.0 },
+            Truth { ppi: 141.2, phys_x: 5.3, phys_y: 1440.0 / 108.8 + 0.9 },
+        ];
+        assert_layout_recovered(mons, truth);
+    }
+
+    #[test]
+    fn stacked_unbound_above() {
+        let mons = vec![
+            monitor(0, 1920, 1080, 0, 0, Some(141.2)),
+            monitor(1, 2560, 1440, -300, -1440, Some(108.8)),
+        ];
+        let truth = vec![
+            Truth { ppi: 141.2, phys_x: 0.0, phys_y: 0.0 },
+            Truth { ppi: 108.8, phys_x: -2.1, phys_y: -(1440.0 / 108.8) - 1.25 },
+        ];
+        assert_layout_recovered(mons, truth);
+    }
+
+    #[test]
+    fn stacked_size_derived_from_scale_step() {
+        // Bottom monitor has no known size: it must come out of the scale step.
+        let mons = vec![
+            monitor(0, 2560, 1440, 0, 0, Some(108.8)),
+            monitor(1, 1920, 1080, 300, 1440, None),
+        ];
+        let truth = vec![
+            Truth { ppi: 108.8, phys_x: 0.0, phys_y: 0.0 },
+            Truth { ppi: 141.2, phys_x: 3.0, phys_y: 1440.0 / 108.8 + 0.6 },
+        ];
+        assert_layout_recovered(mons, truth);
+    }
+
+    #[test]
+    fn three_high_stack_and_side_monitor() {
+        // Laptop (primary) at the bottom, monitor stacked above it, a third to the
+        // right of that monitor; the third binds to the middle one through the chain.
+        let mons = vec![
+            monitor(0, 1920, 1080, 0, 0, Some(141.2)),
+            monitor(1, 2560, 1440, -320, -1440, None),
+            monitor(2, 1920, 1080, 2240, -1440, Some(91.8)),
+        ];
+        let top_y = -(1440.0 / 108.8) - 1.0;
+        let truth = vec![
+            Truth { ppi: 141.2, phys_x: 0.0, phys_y: 0.0 },
+            Truth { ppi: 108.8, phys_x: -4.0, phys_y: top_y },
+            Truth { ppi: 91.8, phys_x: -4.0 + 2560.0 / 108.8 + 0.7, phys_y: top_y + 1.5 },
+        ];
+        assert_layout_recovered(mons, truth);
+    }
+
+    #[test]
+    fn side_by_side_still_recovered() {
+        let mons = vec![
+            monitor(0, 2560, 1440, 0, 0, Some(108.8)),
+            monitor(1, 1920, 1080, 2560, 200, Some(141.2)),
+        ];
+        let truth = vec![
+            Truth { ppi: 108.8, phys_x: 0.0, phys_y: 0.0 },
+            Truth { ppi: 141.2, phys_x: 2560.0 / 108.8 + 1.1, phys_y: 2.4 },
+        ];
+        assert_layout_recovered(mons, truth);
+    }
+
     #[test]
     fn stale_results_are_rejected() {
         let mons = vec![monitor(0, 1000, 500, 0, 0, Some(100.0))];

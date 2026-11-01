@@ -1,31 +1,11 @@
 pub mod flow;
 pub mod overlay;
+pub mod pair;
+
+pub use pair::CalibrationResult;
 
 use crate::monitors::Monitor;
-use serde::{Deserialize, Serialize};
 use windows::Win32::UI::WindowsAndMessaging::*;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CalibrationResult {
-    pub monitor_id: usize,
-    /// PPI ratio of this monitor relative to the monitor it is bound to
-    /// (ppi_unbound / ppi_bound). Consumers derive `ppi_unbound = ppi_bound * scale`,
-    /// so this must be pairwise, not cumulative from the primary monitor.
-    pub scale: f64,
-    pub relative_x: f64,
-    pub relative_y: f64,
-    /// Gap between the two monitors' active areas, in pixels of whichever monitor
-    /// is on the right (horizontal binding) or bottom (vertical binding): the gap
-    /// overlay translates that monitor's diagonal lines by this many of its pixels.
-    pub gap: i32,
-    pub bound_to: usize,
-    pub bind_horizontal: bool,
-    /// Pixel offset from unbound monitor's top (or left) edge to alignment midpoint
-    pub align_offset_unbound: f64,
-    /// Pixel offset from bound monitor's top (or left) edge to alignment midpoint
-    pub align_offset_bound: f64,
-}
 
 pub fn run_calibration(monitors: &[Monitor], color1: [u8; 3], color2: [u8; 3]) -> Result<Vec<CalibrationResult>, String> {
     if monitors.len() < 2 {
@@ -92,52 +72,6 @@ pub fn run_calibration(monitors: &[Monitor], color1: [u8; 3], color2: [u8; 3]) -
         let temp_mid_m1 = (scale_result.segments[0] + scale_result.segments[2]) / 2;
         let temp_mid_m2 = (scale_result.segments[1] + scale_result.segments[3]) / 2;
 
-        // off[0..3] are pixel offsets from each monitor's top (or left) edge
-        // to each line position: [blue_m1, blue_m2, red_m1, red_m2]
-        let (scale, ratio, relative_offset, align_off_m1, align_off_m2) = if bind_horizontal {
-            let off = [
-                scale_result.segments[0] - m1r.y,
-                scale_result.segments[1] - m2r.y,
-                scale_result.segments[2] - m1r.y,
-                scale_result.segments[3] - m2r.y,
-            ];
-
-            let span_m1 = (off[2] - off[0]).abs() as f64;
-            let span_m2 = (off[3] - off[1]).abs() as f64;
-
-            // Pairwise PPI ratio (unbound / bound): the same physical span covers
-            // span_m1 pixels on the unbound monitor and span_m2 on the bound one.
-            let ratio = if span_m2 > 1.0 { span_m1 / span_m2 } else { 1.0 };
-            let scale = scales[*bound_idx] * ratio;
-
-            let mid_m1 = (off[0] + off[2]) as f64 / 2.0;
-            let mid_m2 = (off[1] + off[3]) as f64 / 2.0;
-            let rel_y = off[1] as f64 - off[0] as f64 * scale;
-            (scale, ratio, rel_y, mid_m1, mid_m2)
-        } else {
-            let off = [
-                scale_result.segments[0] - m1r.x,
-                scale_result.segments[1] - m2r.x,
-                scale_result.segments[2] - m1r.x,
-                scale_result.segments[3] - m2r.x,
-            ];
-
-            let span_m1 = (off[2] - off[0]).abs() as f64;
-            let span_m2 = (off[3] - off[1]).abs() as f64;
-
-            // Pairwise PPI ratio (unbound / bound): the same physical span covers
-            // span_m1 pixels on the unbound monitor and span_m2 on the bound one.
-            let ratio = if span_m2 > 1.0 { span_m1 / span_m2 } else { 1.0 };
-            let scale = scales[*bound_idx] * ratio;
-
-            let mid_m1 = (off[0] + off[2]) as f64 / 2.0;
-            let mid_m2 = (off[1] + off[3]) as f64 / 2.0;
-            let rel_x = off[1] as f64 - off[0] as f64 * scale;
-            (scale, ratio, rel_x, mid_m1, mid_m2)
-        };
-
-        scales[*unbound_idx] = scale;
-
         // --- Gap step ---
         let gap_result = overlay::run_overlay(overlay::OverlayConfig {
             step: overlay::OverlayStep::Gap,
@@ -155,47 +89,19 @@ pub fn run_calibration(monitors: &[Monitor], color1: [u8; 3], color2: [u8; 3]) -
             return Err("Calibration cancelled".to_string());
         }
 
-        let gap = gap_result.gap;
-
-        let (relative_x, relative_y) = if bind_horizontal {
-            let m1 = &monitors[*unbound_idx];
-            let m2 = &monitors[*bound_idx];
-            let m1_w = m1.resolution_x as f64;
-            let m2_w = m2.resolution_x as f64;
-
-            let rx = if m1.position_x < m2.position_x {
-                -(gap as f64 * 2.0) - m1_w * scale
-            } else {
-                m2_w * scales[*bound_idx] + gap as f64 * 2.0
-            };
-
-            (rx, relative_offset)
-        } else {
-            let m1 = &monitors[*unbound_idx];
-            let m2 = &monitors[*bound_idx];
-            let m1_h = m1.resolution_y as f64;
-            let m2_h = m2.resolution_y as f64;
-
-            let ry = if m1.position_y < m2.position_y {
-                -(gap as f64 * 2.0) - m1_h * scale
-            } else {
-                m2_h * scales[*bound_idx] + gap as f64 * 2.0
-            };
-
-            (relative_offset, ry)
-        };
-
-        results.push(CalibrationResult {
-            monitor_id: *unbound_idx,
-            scale: ratio,
-            relative_x,
-            relative_y,
-            gap,
-            bound_to: *bound_idx,
+        let (result, scale) = pair::pair_result(
+            monitors,
+            *unbound_idx,
+            *bound_idx,
+            pair::Origin { x: m1r.x, y: m1r.y },
+            pair::Origin { x: m2r.x, y: m2r.y },
             bind_horizontal,
-            align_offset_unbound: align_off_m1,
-            align_offset_bound: align_off_m2,
-        });
+            scale_result.segments,
+            gap_result.gap,
+            scales[*bound_idx],
+        );
+        scales[*unbound_idx] = scale;
+        results.push(result);
     }
 
     Ok(results)

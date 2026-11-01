@@ -14,11 +14,6 @@ fn get_monitors(overrides: &DiagonalOverrides) -> Result<Vec<monitors::Monitor>,
     let mut mons = monitors::discover_all()?;
     let map = overrides.0.lock().unwrap();
     for m in &mut mons {
-        // EDID-reported sizes are authoritative; manual overrides only fill in
-        // guessed or missing sizes.
-        if m.size_source == "edid" {
-            continue;
-        }
         if let Some(&diag) = map.get(&m.id) {
             monitors::set_physical_from_diagonal(m, diag);
             m.size_source = "manual".into();
@@ -44,15 +39,21 @@ fn set_monitor_diagonal(
     if diagonal <= 0.0 || diagonal > 200.0 {
         return Err("Diagonal must be between 0 and 200 inches".into());
     }
-    let mons = monitors::discover_all()?;
-    match mons.iter().find(|m| m.id == id) {
-        None => return Err("Monitor not found".into()),
-        Some(m) if m.size_source == "edid" => {
-            return Err("This monitor reports its own size (EDID); it can't be overridden".into())
-        }
-        Some(_) => {}
+    // EDID sizes can be overridden too (the UI asks for an explicit "override"),
+    // since some TVs and projectors report bogus physical sizes.
+    if !monitors::discover_all()?.iter().any(|m| m.id == id) {
+        return Err("Monitor not found".into());
     }
     overrides.0.lock().unwrap().insert(id, diagonal);
+    Ok(())
+}
+
+#[tauri::command]
+fn clear_monitor_diagonal(
+    id: usize,
+    overrides: tauri::State<'_, DiagonalOverrides>,
+) -> Result<(), String> {
+    overrides.0.lock().unwrap().remove(&id);
     Ok(())
 }
 
@@ -190,6 +191,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             discover_monitors,
             set_monitor_diagonal,
+            clear_monitor_diagonal,
             get_monitor_info,
             set_overlay_colors,
             get_overlay_colors,
