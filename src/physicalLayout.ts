@@ -88,17 +88,19 @@ export function computePhysicalPlacements(
     const offsetIn =
       r.alignOffsetBound / ppiBound - r.alignOffsetUnbound / ppiUnbound;
 
+    // Active areas can't physically overlap, so a negative gap (lines aligned past
+    // each other) is treated as touching rather than flipped into a positive gap.
     let x: number, y: number;
     if (r.bindHorizontal) {
       // The gap is measured in pixels of the right-hand monitor.
       const unboundFirst = mUnbound.positionX < mBound.positionX;
-      const gapIn = Math.abs(r.gap) / (unboundFirst ? ppiBound : ppiUnbound);
+      const gapIn = Math.max(0, r.gap) / (unboundFirst ? ppiBound : ppiUnbound);
       x = unboundFirst ? bound.x - w - gapIn : bound.x + bound.w + gapIn;
       y = bound.y + offsetIn;
     } else {
       // The gap is measured in pixels of the bottom monitor.
       const unboundFirst = mUnbound.positionY < mBound.positionY;
-      const gapIn = Math.abs(r.gap) / (unboundFirst ? ppiBound : ppiUnbound);
+      const gapIn = Math.max(0, r.gap) / (unboundFirst ? ppiBound : ppiUnbound);
       y = unboundFirst ? bound.y - h - gapIn : bound.y + bound.h + gapIn;
       x = bound.x + offsetIn;
     }

@@ -235,7 +235,7 @@ fn compute_physical_placements(
             // `gap` is measured in pixels of the right-hand monitor (see CalibrationResult::gap).
             let unbound_first = m.position_x < m_bound.position_x;
             let gap_ppi = if unbound_first { ppi_bound } else { ppi_unbound };
-            let gap_in = (r.gap as f64).abs() / gap_ppi;
+            let gap_in = (r.gap as f64).max(0.0) / gap_ppi;
 
             let px = if unbound_first {
                 bound_placement.0 - w - gap_in
@@ -247,7 +247,7 @@ fn compute_physical_placements(
             // `gap` is measured in pixels of the bottom monitor.
             let unbound_first = m.position_y < m_bound.position_y;
             let gap_ppi = if unbound_first { ppi_bound } else { ppi_unbound };
-            let gap_in = (r.gap as f64).abs() / gap_ppi;
+            let gap_in = (r.gap as f64).max(0.0) / gap_ppi;
 
             let py = if unbound_first {
                 bound_placement.1 - h - gap_in
@@ -404,6 +404,18 @@ mod tests {
         let b = p.iter().find(|p| p.monitor_idx == 2).unwrap();
         // ppi_B = 100 * 1.5 * 2.0 = 300 -> width 1000/300
         assert!((b.w - 1000.0 / 300.0).abs() < 1e-9, "w = {}", b.w);
+    }
+
+    #[test]
+    fn negative_gap_is_clamped_to_touching() {
+        // Active areas can't physically overlap; a negative gap is a mis-alignment.
+        let mons = vec![
+            monitor(0, 1000, 500, 0, 0, Some(100.0)),
+            monitor(1, 1000, 500, 1000, 0, Some(100.0)),
+        ];
+        let p = compute_physical_placements(&mons, &[result(1, 0, 1.0, -50)]);
+        let right = p.iter().find(|p| p.monitor_idx == 1).unwrap();
+        assert!((right.x - 10.0).abs() < 1e-9, "x = {}", right.x);
     }
 
     #[test]

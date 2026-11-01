@@ -49,6 +49,18 @@ function DiagonalField({
     }
   };
 
+  // A size reported by the monitor itself (EDID) is more reliable than a typed-in diagonal.
+  if (monitor.sizeSource === "edid") {
+    return (
+      <span
+        className="diagonal-locked"
+        title="Size reported by the monitor (EDID); not editable"
+      >
+        {monitor.diagonalIn != null ? `${monitor.diagonalIn.toFixed(1)}"` : "? size"}
+      </span>
+    );
+  }
+
   if (editing) {
     return (
       <span className="diagonal-edit">
