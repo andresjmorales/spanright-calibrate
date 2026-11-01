@@ -66,7 +66,9 @@ Most multi-monitor setups have monitors of different sizes, pixel densities, and
 
 4. **Exports to Spanright** — generates a configuration matching Spanright's format and can open your calibrated layout directly in the [Spanright editor](https://spanright.com) via a compressed URL. Also supports copying JSON to clipboard or saving to a file. An **Include virtual layout** checkbox lets you embed the exact Windows virtual-desktop coordinates (pixel positions from Display Settings) so Spanright can reproduce imprecise monitor offsets without manual adjustment.
 
-5. **Detailed monitor info** — each detected monitor has an info panel showing everything the OS and EDID data can provide: manufacturer, model, serial number, manufacture date, native resolution, color format, bit depth, gamma, refresh rate range, connection type, and more.
+5. **Fine-tunes the Windows virtual layout** — click the pencil (**Edit**) button above the virtual layout map to rearrange displays without leaving gaps: drag a display and it slides along its neighbours' edges (and around corners onto the next edge), snapping to aligned tops, bottoms and centres (hold Alt to skip snapping). For pixel-exact control, nudge with the arrow keys (1 px, Shift = 10 px, Ctrl = 100 px) or type exact X/Y coordinates; the panel shows how each edge lines up with its neighbours. After calibrating, **Match physical layout** suggests positions that make the cursor cross each edge where the screens physically meet. Nothing is written to Windows until you click **Apply** (with **Reset to system settings** and **Undo apply**).
+
+6. **Detailed monitor info** — each detected monitor has an info panel showing everything the OS and EDID data can provide: manufacturer, model, serial number, manufacture date, native resolution, color format, bit depth, gamma, refresh rate range, connection type, and more.
 
 ## How Calibration Works
 
@@ -141,6 +143,13 @@ npm run tauri build
 
 The installer will be in `src-tauri/target/release/bundle/`.
 
+To run the tests:
+
+```bash
+npm test                                          # frontend (Vitest)
+cargo test --manifest-path src-tauri/Cargo.toml   # Rust (Windows only)
+```
+
 ## Releases
 1. Create new branch with pattern `release/vX.X.X`
 2. Bump versions in relevant files (`package.json`, `tauri.conf.json`, `cargo.toml`)
@@ -157,7 +166,7 @@ spanright-calibrate/
 │   ├── App.tsx                   # Main app component
 │   ├── components/               # UI components
 │   │   ├── MonitorList.tsx       # Monitor cards + info popup
-│   │   ├── MonitorLayoutMap.tsx  # Virtual layout SVG
+│   │   ├── MonitorLayoutMap.tsx  # Virtual layout SVG + layout editor
 │   │   ├── PhysicalLayoutMap.tsx # Physical layout SVG
 │   │   ├── CalibrationPanel.tsx  # Calibration controls + results
 │   │   ├── ExportPanel.tsx       # Export buttons
@@ -165,6 +174,8 @@ spanright-calibrate/
 │   │   └── AboutDialog.tsx       # About modal
 │   ├── hooks/
 │   │   └── useTauriCommands.ts   # Tauri invoke wrappers
+│   ├── layoutEdit.ts             # Virtual layout editing + validation
+│   ├── layoutEdit.test.ts        # Vitest tests for the layout editor logic
 │   ├── spanrightUrl.ts           # Spanright URL encoder
 │   └── types.ts                  # Shared TypeScript types
 ├── src-tauri/                    # Rust backend
@@ -173,6 +184,7 @@ spanright-calibrate/
 │       ├── monitors/
 │       │   ├── discovery.rs      # Win32 monitor enumeration
 │       │   ├── edid.rs           # EDID parsing (physical size + detailed info)
+│       │   ├── layout.rs         # Validate + apply virtual layout (ChangeDisplaySettingsEx)
 │       │   └── models.rs         # Monitor data structures
 │       ├── calibration/
 │       │   ├── overlay.rs        # Native fullscreen overlay (GDI drawing)
