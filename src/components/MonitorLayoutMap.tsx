@@ -306,11 +306,16 @@ export default function MonitorLayoutMap({ monitors, onApplied, results }: Props
 
   return (
     <div>
-      <div className="section-title-row">
-        <div className="section-title">Virtual Layout</div>
+      <div className="section-title">Virtual Layout</div>
+      <div
+        ref={mapRef}
+        className={`layout-map-container${editing ? " layout-map-editing" : ""}`}
+        tabIndex={editing ? 0 : -1}
+        onKeyDown={onKeyDown}
+      >
         {!editing && (
           <button
-            className="btn btn-secondary btn-small btn-icon"
+            className="btn btn-secondary btn-small btn-icon layout-map-edit-btn"
             onClick={startEditing}
             title="Fine-tune the Windows display arrangement"
             disabled={monitors.length < 2}
@@ -318,13 +323,6 @@ export default function MonitorLayoutMap({ monitors, onApplied, results }: Props
             <PencilIcon /> Edit
           </button>
         )}
-      </div>
-      <div
-        ref={mapRef}
-        className={`layout-map-container${editing ? " layout-map-editing" : ""}`}
-        tabIndex={editing ? 0 : -1}
-        onKeyDown={onKeyDown}
-      >
         <svg
           width={svgW}
           height={svgH}

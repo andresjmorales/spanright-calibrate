@@ -686,15 +686,14 @@ html, body, #root {
 }
 
 /* Virtual layout editing */
-.section-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
+.layout-map-container {
+  position: relative;
 }
 
-.section-title-row .section-title {
-  margin-bottom: 0;
+.layout-map-edit-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
 }
 
 .btn-icon {
