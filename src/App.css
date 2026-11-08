@@ -684,3 +684,98 @@ html, body, #root {
   color: var(--accent);
   text-decoration: underline;
 }
+
+/* Virtual layout editing */
+.layout-map-container {
+  position: relative;
+}
+
+.layout-map-edit-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.btn-icon {
+  gap: 5px;
+}
+
+.layout-map-container:focus {
+  outline: none;
+}
+
+.layout-map-editing {
+  border-color: var(--accent);
+}
+
+.layout-map-editing:focus-visible,
+.layout-map-editing:focus {
+  box-shadow: 0 0 0 2px rgba(108, 141, 250, 0.35);
+}
+
+.layout-edit-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 12px 14px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 12px;
+}
+
+.layout-edit-hint,
+.layout-edit-muted {
+  color: var(--text-secondary);
+}
+
+.layout-edit-selected {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.layout-edit-selected label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+}
+
+.layout-edit-selected input {
+  width: 80px;
+  padding: 4px 6px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: var(--font);
+  font-size: 12px;
+}
+
+.layout-edit-offsets {
+  list-style: none;
+  color: var(--text-secondary);
+}
+
+.layout-edit-error {
+  color: var(--error);
+}
+
+.layout-edit-ok {
+  color: var(--success);
+}
+
+.layout-snap-guide {
+  stroke: var(--accent-hover);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  pointer-events: none;
+}
+
+.layout-map-editing .layout-map-svg {
+  touch-action: none;
+  user-select: none;
+}

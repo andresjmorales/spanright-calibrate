@@ -120,6 +120,57 @@ fn save_calibration_file(
     }
 }
 
+/// Move monitors in the Windows virtual desktop. `positions` must cover every
+/// connected monitor. Positions are normalized so the primary sits at (0, 0) and
+/// validated before anything is applied. Returns the monitors as Windows reports
+/// them afterwards (Windows may still nudge a layout it doesn't like).
+#[tauri::command]
+fn apply_monitor_positions(
+    positions: Vec<monitors::layout::MonitorPosition>,
+    overrides: tauri::State<'_, DiagonalOverrides>,
+) -> Result<Vec<monitors::Monitor>, String> {
+    use monitors::layout::{apply_positions, validate_layout, Rect};
+
+    let current = get_monitors(&overrides)?;
+    if positions.len() != current.len()
+        || current.iter().any(|m| positions.iter().filter(|p| p.id == m.id).count() != 1)
+    {
+        return Err("Monitors changed since the layout was loaded. Refresh and try again.".into());
+    }
+    let primary = current
+        .iter()
+        .position(|m| m.is_primary)
+        .ok_or("No primary monitor found")?;
+    let pos_of = |id: usize| positions.iter().find(|p| p.id == id).unwrap();
+    let (ox, oy) = {
+        let p = pos_of(current[primary].id);
+        (p.x, p.y)
+    };
+
+    let rects: Vec<Rect> = current
+        .iter()
+        .map(|m| {
+            let p = pos_of(m.id);
+            Rect {
+                x: p.x - ox,
+                y: p.y - oy,
+                w: m.resolution_x as i32,
+                h: m.resolution_y as i32,
+            }
+        })
+        .collect();
+    validate_layout(&rects, primary)?;
+
+    let changes: Vec<(String, i32, i32)> = current
+        .iter()
+        .zip(&rects)
+        .map(|(m, r)| (m.device_name.clone(), r.x, r.y))
+        .collect();
+    apply_positions(&changes)?;
+
+    get_monitors(&overrides)
+}
+
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 struct MonitorDetailInfo {
@@ -198,6 +249,7 @@ pub fn run() {
             start_calibration,
             export_calibration_json,
             save_calibration_file,
+            apply_monitor_positions,
             open_url
         ])
         .run(tauri::generate_context!())

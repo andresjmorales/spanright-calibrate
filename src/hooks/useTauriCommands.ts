@@ -86,3 +86,13 @@ export async function getMonitorInfo(
 ): Promise<MonitorDetailInfo | null> {
   return invoke<MonitorDetailInfo | null>("get_monitor_info", { id });
 }
+
+/**
+ * Move monitors in the Windows virtual desktop (positions only). Returns the
+ * monitors as Windows reports them after applying.
+ */
+export async function applyMonitorPositions(
+  positions: { id: number; x: number; y: number }[]
+): Promise<Monitor[]> {
+  return invoke<Monitor[]>("apply_monitor_positions", { positions });
+}

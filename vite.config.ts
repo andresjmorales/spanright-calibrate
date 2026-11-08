@@ -7,6 +7,12 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    // Don't watch the Rust side: Cargo's build output under src-tauri/target is
+    // huge and its .exe files are locked while building on Windows, which makes
+    // the watcher crash with EBUSY. Tauri watches src-tauri itself.
+    watch: {
+      ignored: ['**/src-tauri/**'],
+    },
   },
   envPrefix: ['VITE_', 'TAURI_'],
   build: {
