@@ -29,3 +29,7 @@ features = [
     "Win32_System_Registry",
     "Win32_UI_Shell",
 ]
+
+[target.'cfg(target_os = "linux")'.dependencies]
+# GDK monitor discovery and full-screen overlay windows; same version Tauri uses.
+gtk = "0.18"

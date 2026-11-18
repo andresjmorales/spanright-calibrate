@@ -19,6 +19,7 @@
   <a href="https://github.com/andresjmorales/spanright-calibrate/stargazers"><img src="https://img.shields.io/github/stars/andresjmorales/spanright-calibrate?style=flat" alt="GitHub stars"></a>
   <br>
   <img src="https://img.shields.io/badge/platform-Windows%2010%20|%2011-0078D4" alt="Windows 10 and 11">
+  <img src="https://img.shields.io/badge/platform-Linux-FCC624?logo=linux&logoColor=black" alt="Linux">
   <img src="https://img.shields.io/badge/Tauri-2-24C8D8?logo=tauri&logoColor=white" alt="Tauri 2">
   <img src="https://img.shields.io/badge/Rust-000000?logo=rust&logoColor=white" alt="Rust">
   <img src="https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white" alt="React 19">
@@ -37,7 +38,7 @@
   <img src="https://github.com/user-attachments/assets/bac3cb66-f3fc-452f-889e-d8e4f4c04c34" alt="Spanright Calibrate showing a measured physical layout of three monitors" width="700">
 </p>
 
-A Windows desktop tool that visually calibrates the physical arrangement of a multi-monitor setup and exports an accurate layout for use with the [Spanright](https://spanright.com) multi-monitor wallpaper alignment tool (Spanright repo [here](https://github.com/andresjmorales/spanright)). This is like a calibration companion app for Spanright.
+A Windows and Linux desktop tool that visually calibrates the physical arrangement of a multi-monitor setup and exports an accurate layout for use with the [Spanright](https://spanright.com) multi-monitor wallpaper alignment tool (Spanright repo [here](https://github.com/andresjmorales/spanright)). This is like a calibration companion app for Spanright.
 
 ## Installation
 
@@ -49,8 +50,19 @@ Download the latest release from the [Releases page](https://github.com/andresjm
 | `.exe` | NSIS installer |
 | `.zip` | Portable — extract and run, no installation needed |
 | `.tar.gz` | Compressed archive |
+| `.AppImage` | Linux — `chmod +x` and run, no installation needed |
+| `.deb` | Linux installer for Debian, Ubuntu and derivatives |
 
-> **Requirements:** Windows 10 or 11. Multiple monitors must be connected during calibration.
+> **Requirements:** Windows 10 or 11, or a Linux desktop (X11 or Wayland) with WebKitGTK 4.1. Multiple monitors must be connected during calibration.
+
+### Linux notes
+
+Linux support is newer than Windows support, so please [open an issue](https://github.com/andresjmorales/spanright-calibrate/issues) if something looks off on your setup.
+
+- **Monitor detection** uses GTK/GDK for positions and resolutions, and the kernel's DRM connectors (`/sys/class/drm`) for EDID data. Both work on X11 and Wayland.
+- **Calibration** opens one full-screen overlay window per monitor. If your window manager puts an overlay on the wrong monitor, please report it with your desktop environment name.
+- **Editing the virtual layout** (the **Edit** / **Apply** feature) works on X11 through `xrandr`. Wayland doesn't let apps move monitors, so use your desktop's display settings there. Calibration and export work the same either way.
+- **Fractional scaling on Wayland** (for example 125% or 150%): GTK reports a rounded-up scale, so the resolutions shown can differ from the panel's native resolution. Integer scales (100%, 200%) are reported exactly.
 
 ## What it does
 
@@ -107,14 +119,15 @@ Once all the calibration steps are completed, the app will show you your measure
 
 - **[Tauri 2](https://v2.tauri.app/)** — desktop app framework (Rust backend + web frontend in a native OS webview)
 - **React + TypeScript** — frontend UI
-- **Rust** — backend: Win32 API calls, EDID parsing, fullscreen calibration overlay windows, display config queries
-- **Target**: Windows 10/11
+- **Rust** — backend: Win32 API calls (Windows) or GDK + `/sys/class/drm` (Linux), EDID parsing, fullscreen calibration overlay windows, display config queries
+- **Target**: Windows 10/11 and Linux (X11 and Wayland)
 
 ## Prerequisites
 
 - **Node.js** (v18+)
 - **Rust** (install from [rustup.rs](https://rustup.rs))
-- **Platform deps**: [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for Windows
+- **Platform deps**: [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your platform. On Debian/Ubuntu:
+  `sudo apt install libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf`
 
 ## Getting Started
 
@@ -147,7 +160,7 @@ To run the tests:
 
 ```bash
 npm test                                          # frontend (Vitest)
-cargo test --manifest-path src-tauri/Cargo.toml   # Rust (Windows only)
+cargo test --manifest-path src-tauri/Cargo.toml   # Rust
 ```
 
 ## Releases
@@ -165,6 +178,7 @@ spanright-calibrate/
 ├── src/                          # React frontend
 │   ├── App.tsx                   # Main app component
 │   ├── components/               # UI components
+│   │   ├── Overlay.tsx           # Linux calibration overlay (canvas, one window per monitor)
 │   │   ├── MonitorList.tsx       # Monitor cards + info popup
 │   │   ├── MonitorLayoutMap.tsx  # Virtual layout SVG + layout editor
 │   │   ├── PhysicalLayoutMap.tsx # Physical layout SVG
@@ -181,13 +195,18 @@ spanright-calibrate/
 ├── src-tauri/                    # Rust backend
 │   └── src/
 │       ├── lib.rs                # Tauri commands
+│       ├── gtk_main.rs           # Linux: GTK main-thread helpers
 │       ├── monitors/
 │       │   ├── discovery.rs      # Win32 monitor enumeration
+│       │   ├── linux.rs          # Linux monitor enumeration (GDK + /sys/class/drm EDID)
 │       │   ├── edid.rs           # EDID parsing (physical size + detailed info)
-│       │   ├── layout.rs         # Validate + apply virtual layout (ChangeDisplaySettingsEx)
+│       │   ├── layout.rs         # Validate + apply virtual layout (ChangeDisplaySettingsEx / xrandr)
 │       │   └── models.rs         # Monitor data structures
 │       ├── calibration/
-│       │   ├── overlay.rs        # Native fullscreen overlay (GDI drawing)
+│       │   ├── overlay/
+│       │   │   ├── mod.rs        # Shared overlay types + starting line positions
+│       │   │   ├── win.rs        # Windows: native fullscreen overlay (GDI drawing)
+│       │   │   └── linux.rs      # Linux: per-monitor full-screen webview windows
 │       │   └── mod.rs            # Calibration flow + math
 │       └── export/
 │           └── mod.rs            # Spanright JSON export

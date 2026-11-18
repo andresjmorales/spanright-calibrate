@@ -2,6 +2,8 @@
 
 mod calibration;
 mod export;
+#[cfg(target_os = "linux")]
+mod gtk_main;
 mod monitors;
 
 use std::collections::HashMap;
@@ -76,6 +78,7 @@ fn get_overlay_colors(
     Ok(*c)
 }
 
+#[cfg(windows)]
 #[tauri::command]
 fn start_calibration(
     overrides: tauri::State<'_, DiagonalOverrides>,
@@ -84,6 +87,33 @@ fn start_calibration(
     let monitors = get_monitors(&overrides)?;
     let c = colors.0.lock().unwrap();
     calibration::run_calibration(&monitors, c[0], c[1])
+}
+
+/// On Linux the overlay windows are driven by the GTK main loop, so calibration
+/// must wait for them on a worker thread rather than block the main thread.
+#[cfg(not(windows))]
+#[tauri::command]
+async fn start_calibration(
+    overrides: tauri::State<'_, DiagonalOverrides>,
+    colors: tauri::State<'_, OverlayColors>,
+) -> Result<Vec<calibration::CalibrationResult>, String> {
+    let monitors = get_monitors(&overrides)?;
+    let c = *colors.0.lock().unwrap();
+    tauri::async_runtime::spawn_blocking(move || calibration::run_calibration(&monitors, c[0], c[1]))
+        .await
+        .map_err(|e| format!("Calibration failed: {e}"))?
+}
+
+/// The calibration step an overlay window should draw (Linux overlay only).
+#[tauri::command]
+fn overlay_view() -> Option<calibration::overlay::OverlayView> {
+    calibration::overlay::current_view()
+}
+
+/// An overlay window confirmed (Enter) or cancelled (Esc) the step `token`.
+#[tauri::command]
+fn overlay_finish(token: u64, cancelled: bool, segments: [i32; 4], gap: i32) {
+    calibration::overlay::finish(token, cancelled, segments, gap);
 }
 
 #[tauri::command]
@@ -120,7 +150,7 @@ fn save_calibration_file(
     }
 }
 
-/// Move monitors in the Windows virtual desktop. `positions` must cover every
+/// Move monitors in the virtual desktop. `positions` must cover every
 /// connected monitor. Positions are normalized so the primary sits at (0, 0) and
 /// validated before anything is applied. Returns the monitors as Windows reports
 /// them afterwards (Windows may still nudge a layout it doesn't like).
@@ -160,53 +190,28 @@ fn apply_monitor_positions(
         })
         .collect();
     validate_layout(&rects, primary)?;
+    apply_positions(&current, &rects)?;
 
-    let changes: Vec<(String, i32, i32)> = current
-        .iter()
-        .zip(&rects)
-        .map(|(m, r)| (m.device_name.clone(), r.x, r.y))
-        .collect();
-    apply_positions(&changes)?;
-
-    get_monitors(&overrides)
-}
-
-#[derive(serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-struct MonitorDetailInfo {
-    edid: Option<monitors::edid::EdidInfo>,
-    refresh_rate_hz: Option<u32>,
-    connection_type: Option<String>,
+    #[allow(unused_mut)]
+    let mut updated = get_monitors(&overrides)?;
+    // GDK only sees the new X11 layout once the main loop has handled the change
+    // events, after this command returns, so report the layout xrandr was given.
+    #[cfg(target_os = "linux")]
+    for (m, r) in updated.iter_mut().zip(&rects) {
+        m.position_x = r.x;
+        m.position_y = r.y;
+    }
+    Ok(updated)
 }
 
 #[tauri::command]
-fn get_monitor_info(id: usize) -> Result<Option<MonitorDetailInfo>, String> {
-    let mons = monitors::discover_all()?;
-    let m = match mons.iter().find(|m| m.id == id) {
-        Some(m) => m,
-        None => return Ok(None),
-    };
-
-    let edid = {
-        let info_map = monitors::edid::read_all_edid_info()?;
-        info_map
-            .iter()
-            .find(|(key, _)| m.monitor_device_id.contains(key.as_str()))
-            .map(|(_, info)| info.clone())
-    };
-
-    let (refresh_rate_hz, connection_type) =
-        monitors::discovery::get_display_extras(&m.device_name);
-
-    Ok(Some(MonitorDetailInfo {
-        edid,
-        refresh_rate_hz,
-        connection_type,
-    }))
+fn get_monitor_info(id: usize) -> Result<Option<monitors::MonitorDetailInfo>, String> {
+    monitors::monitor_details(id)
 }
 
 /// Open an http(s) URL in the default browser. Uses ShellExecuteW directly rather than
 /// `cmd /C start`, which would treat characters like `&`, `|` or `%` in the URL as shell syntax.
+#[cfg(windows)]
 #[tauri::command]
 fn open_url(url: String) -> Result<(), String> {
     use windows::core::{w, PCWSTR};
@@ -235,8 +240,33 @@ fn open_url(url: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Open an http(s) URL in the default browser with `xdg-open`. The URL is passed
+/// as a single argument (no shell), so `&` and friends are not interpreted.
+#[cfg(not(windows))]
+#[tauri::command]
+fn open_url(url: String) -> Result<(), String> {
+    let lower = url.to_ascii_lowercase();
+    if !(lower.starts_with("https://") || lower.starts_with("http://")) {
+        return Err("Only http(s) URLs can be opened".into());
+    }
+    let mut cmd = std::process::Command::new("xdg-open");
+    cmd.arg(&url);
+    // Inside an AppImage, the bundled libraries must not leak into the browser.
+    if std::env::var_os("APPIMAGE").is_some() {
+        cmd.env_remove("LD_LIBRARY_PATH").env_remove("GDK_PIXBUF_MODULE_FILE");
+    }
+    cmd.spawn()
+        .map_err(|e| format!("Failed to open URL (xdg-open: {e})"))?;
+    Ok(())
+}
+
 pub fn run() {
     tauri::Builder::default()
+        .setup(|_app| {
+            #[cfg(target_os = "linux")]
+            gtk_main::set_app(_app.handle().clone());
+            Ok(())
+        })
         .manage(DiagonalOverrides(Mutex::new(HashMap::new())))
         .manage(OverlayColors(Mutex::new([[0, 229, 255], [255, 109, 0]])))
         .invoke_handler(tauri::generate_handler![
@@ -250,7 +280,9 @@ pub fn run() {
             export_calibration_json,
             save_calibration_file,
             apply_monitor_positions,
-            open_url
+            open_url,
+            overlay_view,
+            overlay_finish
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
