@@ -5,19 +5,38 @@ pub mod pair;
 pub use pair::CalibrationResult;
 
 use crate::monitors::Monitor;
-use windows::Win32::UI::WindowsAndMessaging::*;
 
 pub fn run_calibration(monitors: &[Monitor], color1: [u8; 3], color2: [u8; 3]) -> Result<Vec<CalibrationResult>, String> {
     if monitors.len() < 2 {
         return Err("Need at least 2 monitors for calibration".to_string());
     }
+    let result = run_pairs(monitors, color1, color2);
+    overlay::close_all();
+    result
+}
+
+/// Top-left corner of the virtual desktop, which the overlay treats as (0, 0).
+#[cfg(windows)]
+fn virtual_origin(_monitors: &[Monitor]) -> (i32, i32) {
+    use windows::Win32::UI::WindowsAndMessaging::*;
+    unsafe { (GetSystemMetrics(SM_XVIRTUALSCREEN), GetSystemMetrics(SM_YVIRTUALSCREEN)) }
+}
+
+#[cfg(not(windows))]
+fn virtual_origin(monitors: &[Monitor]) -> (i32, i32) {
+    (
+        monitors.iter().map(|m| m.position_x).min().unwrap_or(0),
+        monitors.iter().map(|m| m.position_y).min().unwrap_or(0),
+    )
+}
+
+fn run_pairs(monitors: &[Monitor], color1: [u8; 3], color2: [u8; 3]) -> Result<Vec<CalibrationResult>, String> {
 
     let pairs = flow::compute_calibration_order(monitors);
     let mut results = Vec::new();
     let mut scales: Vec<f64> = vec![1.0; monitors.len()];
 
-    let vx = unsafe { GetSystemMetrics(SM_XVIRTUALSCREEN) };
-    let vy = unsafe { GetSystemMetrics(SM_YVIRTUALSCREEN) };
+    let (vx, vy) = virtual_origin(monitors);
 
     let monitor_rects: Vec<overlay::MonitorRect> = monitors
         .iter()

@@ -1,11 +1,28 @@
 pub mod models;
+#[cfg(windows)]
 pub mod discovery;
 pub mod edid;
 pub mod layout;
+#[cfg(target_os = "linux")]
+pub mod linux;
 
 pub use models::Monitor;
 
-pub fn discover_all() -> Result<Vec<Monitor>, String> {
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MonitorDetailInfo {
+    pub edid: Option<edid::EdidInfo>,
+    pub refresh_rate_hz: Option<u32>,
+    pub connection_type: Option<String>,
+}
+
+#[cfg(target_os = "linux")]
+fn enumerate_with_sizes() -> Result<Vec<Monitor>, String> {
+    linux::enumerate_monitors()
+}
+
+#[cfg(windows)]
+fn enumerate_with_sizes() -> Result<Vec<Monitor>, String> {
     let mut monitors = discovery::enumerate_monitors()?;
 
     if let Err(e) = discovery::populate_friendly_names(&mut monitors) {
@@ -21,6 +38,12 @@ pub fn discover_all() -> Result<Vec<Monitor>, String> {
         }
     }
 
+    Ok(monitors)
+}
+
+pub fn discover_all() -> Result<Vec<Monitor>, String> {
+    let mut monitors = enumerate_with_sizes()?;
+
     for m in &mut monitors {
         if m.physical_width_mm.is_none() {
             if let Some(diag) = guess_diagonal_from_names(m) {
@@ -32,6 +55,37 @@ pub fn discover_all() -> Result<Vec<Monitor>, String> {
     }
 
     Ok(monitors)
+}
+
+/// Everything the OS and EDID can tell about one monitor, for its info panel.
+#[cfg(target_os = "linux")]
+pub fn monitor_details(id: usize) -> Result<Option<MonitorDetailInfo>, String> {
+    linux::monitor_details(id)
+}
+
+#[cfg(windows)]
+pub fn monitor_details(id: usize) -> Result<Option<MonitorDetailInfo>, String> {
+    let mons = discover_all()?;
+    let m = match mons.iter().find(|m| m.id == id) {
+        Some(m) => m,
+        None => return Ok(None),
+    };
+
+    let edid = {
+        let info_map = edid::read_all_edid_info()?;
+        info_map
+            .iter()
+            .find(|(key, _)| m.monitor_device_id.contains(key.as_str()))
+            .map(|(_, info)| info.clone())
+    };
+
+    let (refresh_rate_hz, connection_type) = discovery::get_display_extras(&m.device_name);
+
+    Ok(Some(MonitorDetailInfo {
+        edid,
+        refresh_rate_hz,
+        connection_type,
+    }))
 }
 
 /// Try to extract a plausible diagonal (inches) from monitor/adapter names.

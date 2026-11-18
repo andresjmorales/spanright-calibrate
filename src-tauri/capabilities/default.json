@@ -1,6 +1,6 @@
 {
   "identifier": "default",
-  "description": "Default capability for the main window",
-  "windows": ["main"],
+  "description": "Default capability for the main window and the Linux calibration overlay windows",
+  "windows": ["main", "overlay-*"],
   "permissions": ["core:default"]
 }

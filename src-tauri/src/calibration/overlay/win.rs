@@ -8,39 +8,7 @@ use windows::Win32::Graphics::Gdi::*;
 use windows::Win32::UI::Input::KeyboardAndMouse::*;
 use windows::Win32::UI::WindowsAndMessaging::*;
 
-#[derive(Clone)]
-pub struct MonitorRect {
-    pub x: i32,
-    pub y: i32,
-    pub w: i32,
-    pub h: i32,
-}
-
-#[derive(Clone, Copy, PartialEq)]
-pub enum OverlayStep {
-    Scale,
-    Gap,
-}
-
-pub struct OverlayConfig {
-    pub step: OverlayStep,
-    pub m1_idx: usize,
-    pub m2_idx: usize,
-    pub monitors: Vec<MonitorRect>,
-    pub monitor_labels: Vec<String>,
-    pub bind_horizontal: bool,
-    /// Per-monitor midpoints from the scale step (y-coords for horizontal, x for vertical).
-    /// [0] = midpoint on m1, [1] = midpoint on m2.
-    pub temp_middles: Option<[i32; 2]>,
-    pub color1: [u8; 3],
-    pub color2: [u8; 3],
-}
-
-pub struct OverlayResult {
-    pub cancelled: bool,
-    pub segments: [i32; 4],
-    pub gap: i32,
-}
+use super::{initial_lines, MonitorRect, OverlayConfig, OverlayResult, OverlayStep};
 
 struct State {
     step: OverlayStep,
@@ -96,38 +64,7 @@ fn run_overlay_window(config: OverlayConfig) -> Result<OverlayResult, String> {
         let vw = GetSystemMetrics(SM_CXVIRTUALSCREEN);
         let vh = GetSystemMetrics(SM_CYVIRTUALSCREEN);
 
-        let m1 = &config.monitors[config.m1_idx];
-        let m2 = &config.monitors[config.m2_idx];
-
-        let initial_segments = if config.step == OverlayStep::Scale {
-            if config.bind_horizontal {
-                let min_h = m1.h.min(m2.h);
-                [
-                    m1.y + min_h / 4,
-                    m2.y + min_h / 4,
-                    m1.y + 3 * min_h / 4,
-                    m2.y + 3 * min_h / 4,
-                ]
-            } else {
-                let min_w = m1.w.min(m2.w);
-                [
-                    m1.x + min_w / 4,
-                    m2.x + min_w / 4,
-                    m1.x + 3 * min_w / 4,
-                    m2.x + 3 * min_w / 4,
-                ]
-            }
-        } else {
-            [0; 4]
-        };
-
-        let [mid_m1, mid_m2] = config.temp_middles.unwrap_or_else(|| {
-            if config.bind_horizontal {
-                [m1.y + m1.h / 2, m2.y + m2.h / 2]
-            } else {
-                [m1.x + m1.w / 2, m2.x + m2.w / 2]
-            }
-        });
+        let (initial_segments, [mid_m1, mid_m2]) = initial_lines(&config);
 
         let mut state = Box::new(State {
             step: config.step,
