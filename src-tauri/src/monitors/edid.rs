@@ -1,8 +1,13 @@
+#[cfg(windows)]
 use std::collections::HashMap;
 use serde::Serialize;
+#[cfg(windows)]
 use windows::core::PCWSTR;
+#[cfg(windows)]
 use windows::Win32::Devices::DeviceAndDriverInstallation::*;
+#[cfg(windows)]
 use windows::Win32::Foundation::*;
+#[cfg(windows)]
 use windows::Win32::System::Registry::*;
 
 #[derive(Debug, Clone)]
@@ -38,6 +43,7 @@ pub struct EdidInfo {
     pub native_resolution: Option<[u32; 2]>,
 }
 
+#[cfg(windows)]
 pub fn read_all_edid() -> Result<HashMap<String, EdidPhysicalSize>, String> {
     let mut result = HashMap::new();
 
@@ -85,6 +91,7 @@ pub fn read_all_edid() -> Result<HashMap<String, EdidPhysicalSize>, String> {
 }
 
 /// Read detailed EDID info for all monitors. Returns map of hardware ID fragment → EdidInfo.
+#[cfg(windows)]
 pub fn read_all_edid_info() -> Result<HashMap<String, EdidInfo>, String> {
     let mut result = HashMap::new();
 
@@ -127,6 +134,7 @@ pub fn read_all_edid_info() -> Result<HashMap<String, EdidInfo>, String> {
     Ok(result)
 }
 
+#[cfg(windows)]
 pub fn apply_edid_to_monitors(
     monitors: &mut [super::models::Monitor],
     edid_map: &HashMap<String, EdidPhysicalSize>,
@@ -143,7 +151,7 @@ pub fn apply_edid_to_monitors(
     }
 }
 
-fn parse_edid_full(edid: &[u8]) -> Option<EdidInfo> {
+pub fn parse_edid_full(edid: &[u8]) -> Option<EdidInfo> {
     if edid.len() < 128 {
         return None;
     }
@@ -315,7 +323,7 @@ fn parse_detailed_timing_resolution(edid: &[u8], offset: usize) -> Option<[u32; 
     }
 }
 
-fn parse_edid_physical_size(edid: &[u8]) -> Option<EdidPhysicalSize> {
+pub fn parse_edid_physical_size(edid: &[u8]) -> Option<EdidPhysicalSize> {
     if edid.len() < 128 {
         return None;
     }
@@ -346,6 +354,7 @@ fn parse_edid_physical_size(edid: &[u8]) -> Option<EdidPhysicalSize> {
     None
 }
 
+#[cfg(windows)]
 fn extract_hardware_id_fragment(instance_id: &str) -> String {
     let parts: Vec<&str> = instance_id.split('\\').collect();
     if parts.len() >= 2 {
@@ -355,6 +364,7 @@ fn extract_hardware_id_fragment(instance_id: &str) -> String {
     }
 }
 
+#[cfg(windows)]
 fn get_device_instance_id(dev_info: HDEVINFO, data: &SP_DEVINFO_DATA) -> String {
     let mut buf = [0u16; 512];
     let mut required = 0u32;
@@ -374,6 +384,7 @@ fn get_device_instance_id(dev_info: HDEVINFO, data: &SP_DEVINFO_DATA) -> String 
     }
 }
 
+#[cfg(windows)]
 fn read_edid_from_registry(
     dev_info: HDEVINFO,
     data: &mut SP_DEVINFO_DATA,
